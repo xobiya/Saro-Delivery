@@ -39,4 +39,13 @@ const admin = (req, res, next) => {
     }
 };
 
-module.exports = { protect, admin };
+const vendor = (req, res, next) => {
+    if (req.user && (req.user.role === 'vendor' || req.user.role === 'admin')) {
+        next();
+    } else {
+        res.status(401);
+        throw new Error('Not authorized as a vendor');
+    }
+};
+
+module.exports = { protect, admin, vendor };
