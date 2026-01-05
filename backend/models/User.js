@@ -52,6 +52,9 @@ const userSchema = mongoose.Schema({
     timestamps: true,
 });
 
+// Index on email for faster lookups
+userSchema.index({ email: 1 });
+
 userSchema.methods.matchPassword = async function (enteredPassword) {
     return await bcrypt.compare(enteredPassword, this.password);
 };
@@ -62,6 +65,14 @@ userSchema.pre('save', async function (next) {
     }
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
+});
+
+// Remove password from JSON output
+userSchema.set('toJSON', {
+    transform: function (doc, ret) {
+        delete ret.password;
+        return ret;
+    }
 });
 
 module.exports = mongoose.model('User', userSchema);

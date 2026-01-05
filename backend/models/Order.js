@@ -41,6 +41,7 @@ const orderSchema = mongoose.Schema({
     totalAmount: {
         type: Number,
         required: true,
+        min: [0, 'Total amount must be positive']
     },
     status: {
         type: String,
@@ -58,5 +59,11 @@ const orderSchema = mongoose.Schema({
 }, {
     timestamps: true,
 });
+
+// Indexes for performance optimization
+orderSchema.index({ user: 1, createdAt: -1 }); // User's orders sorted by date
+orderSchema.index({ status: 1, vendor: 1 }); // Vendor filtering by status
+orderSchema.index({ driver: 1, status: 1 }); // Driver filtering by status
+orderSchema.index({ status: 1, createdAt: -1 }); // Admin filtering by status and date
 
 module.exports = mongoose.model('Order', orderSchema);

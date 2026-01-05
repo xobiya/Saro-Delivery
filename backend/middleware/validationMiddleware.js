@@ -16,7 +16,9 @@ const loginSchema = Joi.object({
 const productSchema = Joi.object({
     name: Joi.string().required(),
     description: Joi.string().required(),
-    price: Joi.number().min(0).required(),
+    price: Joi.number().min(0.01).required().messages({
+        'number.min': 'Price must be greater than 0'
+    }),
     category: Joi.string().required(),
     image: Joi.string().uri().allow('').optional(),
     available: Joi.boolean().optional(),
@@ -50,7 +52,8 @@ const orderSchema = Joi.object({
 });
 
 const updateOrderStatusSchema = Joi.object({
-    status: Joi.string().valid('pending', 'preparing', 'ready', 'on-the-way', 'delivered', 'cancelled').required(),
+    status: Joi.string().valid('pending', 'confirmed', 'preparing', 'ready', 'picked_up', 'in_transit', 'delivered', 'cancelled').required(),
+    paymentStatus: Joi.string().valid('pending', 'completed', 'failed').optional(),
 });
 
 const validate = (schema) => (req, res, next) => {

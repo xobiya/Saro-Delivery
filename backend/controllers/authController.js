@@ -1,10 +1,11 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
+const logger = require('../config/logger');
 
 const generateToken = (id) => {
     return jwt.sign({ id }, process.env.JWT_SECRET, {
-        expiresIn: '30d',
+        expiresIn: process.env.JWT_EXPIRE || '30d',
     });
 };
 
@@ -18,6 +19,7 @@ const registerUser = async (req, res) => {
         const userExists = await User.findOne({ email });
 
         if (userExists) {
+            logger.warn('Registration attempted with existing email', { email });
             return res.status(400).json({ message: 'User already exists' });
         }
 
@@ -30,6 +32,12 @@ const registerUser = async (req, res) => {
         });
 
         if (user) {
+            logger.info('New user registered', {
+                userId: user._id,
+                email: user.email,
+                role: user.role
+            });
+
             res.status(201).json({
                 _id: user._id,
                 name: user.name,
@@ -41,7 +49,11 @@ const registerUser = async (req, res) => {
             res.status(400).json({ message: 'Invalid user data' });
         }
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        logger.error('User registration failed', {
+            email,
+            error: error.message
+        });
+        res.status(500).json({ message: 'Registration failed. Please try again.' });
     }
 };
 
@@ -55,6 +67,12 @@ const loginUser = async (req, res) => {
         const user = await User.findOne({ email }).select('+password');
 
         if (user && (await user.matchPassword(password))) {
+            logger.info('User logged in successfully', {
+                userId: user._id,
+                email: user.email,
+                role: user.role
+            });
+
             res.json({
                 _id: user._id,
                 name: user.name,
@@ -63,11 +81,15 @@ const loginUser = async (req, res) => {
                 token: generateToken(user._id),
             });
         } else {
+            logger.warn('Failed login attempt', { email });
             res.status(401).json({ message: 'Invalid email or password' });
         }
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: error.message });
+        logger.error('Login error', {
+            email,
+            error: error.message
+        });
+        res.status(500).json({ message: 'Login failed. Please try again.' });
     }
 };
 
@@ -79,7 +101,8 @@ const getUsers = async (req, res) => {
         const users = await User.find({});
         res.json(users);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        logger.error('Failed to fetch users', { error: error.message });
+        res.status(500).json({ message: 'Failed to fetch users' });
     }
 };
 
