@@ -12,14 +12,63 @@ import {
     FaArrowRight
 } from 'react-icons/fa';
 
+import heroImage from '../Assets/vertical-shot-delicious-ethiopian-food-with-fresh-vegetables-wooden-table.jpg';
+import vendorFallbackImage from '../Assets/meat-vegetable-ethiopian-salads.jpg';
+import { resolveVendorBannerUrl } from '../utils/vendorImages';
+
 const Home = () => {
     const [vendors, setVendors] = useState([]);
     const [loading, setLoading] = useState(true);
 
+        useEffect(() => {
+                // Avoid touching document.styleSheets/cssRules (can throw SecurityError for cross-origin sheets).
+                // Inject Home-specific CSS safely via a <style> tag.
+                const STYLE_ID = 'saro-home-dynamic-css';
+                if (typeof document === 'undefined') return;
+                if (document.getElementById(STYLE_ID)) return;
+
+                const styleEl = document.createElement('style');
+                styleEl.id = STYLE_ID;
+                styleEl.textContent = `
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.saro-home-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+}
+.saro-home-card:hover .saro-home-cardImage {
+    transform: scale(1.05);
+}
+.saro-home-card:hover .saro-home-viewMenu {
+    color: #d35400;
+}
+.saro-home-primaryButton:hover, .saro-home-ctaButtonPrimary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(230, 126, 34, 0.6);
+}
+.saro-home-secondaryButton:hover, .saro-home-seeAllButton:hover, .saro-home-ctaButtonSecondary:hover {
+    background-color: rgba(255,255,255,0.1);
+    transform: translateY(-2px);
+}
+.saro-home-feature:hover {
+    transform: translateY(-5px);
+}
+`;
+
+                document.head.appendChild(styleEl);
+
+                return () => {
+                        styleEl.remove();
+                };
+        }, []);
+
     useEffect(() => {
         const fetchVendors = async () => {
             try {
-                const { data } = await api.get('/vendors');
+                const { data } = await api.getCached('/vendors', { ttlMs: 5 * 60 * 1000 });
                 setVendors(data);
             } catch (error) {
                 console.error('Error fetching vendors:', error);
@@ -63,10 +112,10 @@ const Home = () => {
                             Fresh food, quick service, and unforgettable flavors.
                         </p>
                         <div style={styles.heroButtons}>
-                            <Link to="/vendors" style={styles.primaryButton}>
+                            <Link to="/vendors" style={styles.primaryButton} className="saro-home-primaryButton">
                                 Order Now <FaArrowRight style={{ marginLeft: '8px' }} />
                             </Link>
-                            <Link to="/about" style={styles.secondaryButton}>
+                            <Link to="/about" style={styles.secondaryButton} className="saro-home-secondaryButton">
                                 How It Works
                             </Link>
                         </div>
@@ -96,9 +145,11 @@ const Home = () => {
                     </div>
                     <div style={styles.heroImage}>
                         <img
-                            src="https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=800&auto=format&fit=crop"
-                            alt="Delicious Food"
+                            src={heroImage}
+                            alt="Ethiopian food"
                             style={styles.foodImage}
+                            loading="lazy"
+                            decoding="async"
                         />
                     </div>
                 </div>
@@ -116,13 +167,16 @@ const Home = () => {
 
                 <div style={styles.grid}>
                     {featuredRestaurants.map(vendor => (
-                        <div style={styles.card} key={vendor._id}>
+                        <div style={styles.card} className="saro-home-card" key={vendor._id}>
                             <Link to={`/menu/${vendor._id}`} style={styles.cardLink}>
                                 <div style={styles.cardImageContainer}>
                                     <img
-                                        src={vendor.bannerUrl || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=500'}
+                                        src={resolveVendorBannerUrl(vendor, vendorFallbackImage)}
                                         alt={vendor.businessName}
                                         style={styles.cardImage}
+                                        className="saro-home-cardImage"
+                                        loading="lazy"
+                                        decoding="async"
                                     />
                                     <div style={styles.cardOverlay}>
                                         <span style={vendor.isOpen ? styles.openBadge : styles.closedBadge}>
@@ -152,7 +206,7 @@ const Home = () => {
                                             <FaMapMarkerAlt style={{ marginRight: '6px', color: '#e74c3c' }} />
                                             <span>Arba Minch</span>
                                         </div>
-                                        <span style={styles.viewMenu}>View Menu →</span>
+                                        <span style={styles.viewMenu} className="saro-home-viewMenu">View Menu →</span>
                                     </div>
                                 </div>
                             </Link>
@@ -160,7 +214,7 @@ const Home = () => {
                     ))}
                 </div>
                 <div style={styles.seeAllContainer}>
-                    <Link to="/vendors?type=restaurant" style={styles.seeAllButton}>
+                    <Link to="/vendors?type=restaurant" style={styles.seeAllButton} className="saro-home-seeAllButton">
                         View All Restaurants
                     </Link>
                 </div>
@@ -178,13 +232,16 @@ const Home = () => {
 
                 <div style={styles.grid}>
                     {featuredHotels.length > 0 ? featuredHotels.map(vendor => (
-                        <div style={styles.card} key={vendor._id}>
+                        <div style={styles.card} className="saro-home-card" key={vendor._id}>
                             <Link to={`/menu/${vendor._id}`} style={styles.cardLink}>
                                 <div style={styles.cardImageContainer}>
                                     <img
-                                        src={vendor.bannerUrl || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w-800&auto=format&fit=crop'}
+                                        src={resolveVendorBannerUrl(vendor, vendorFallbackImage)}
                                         alt={vendor.businessName}
                                         style={styles.cardImage}
+                                        className="saro-home-cardImage"
+                                        loading="lazy"
+                                        decoding="async"
                                     />
                                     <div style={styles.cardOverlay}>
                                         <span style={styles.hotelBadge}>HOTEL</span>
@@ -204,7 +261,7 @@ const Home = () => {
                                             <FaMapMarkerAlt style={{ marginRight: '6px', color: '#3498db' }} />
                                             <span>Central Location</span>
                                         </div>
-                                        <span style={styles.viewMenu}>Explore →</span>
+                                        <span style={styles.viewMenu} className="saro-home-viewMenu">Explore →</span>
                                     </div>
                                 </div>
                             </Link>
@@ -222,21 +279,21 @@ const Home = () => {
             {/* Features Section */}
             <section style={styles.featuresSection}>
                 <div style={styles.featuresContainer}>
-                    <div style={styles.feature}>
+                    <div style={styles.feature} className="saro-home-feature">
                         <div style={styles.featureIcon}>
                             <FaShippingFast />
                         </div>
                         <h3 style={styles.featureTitle}>Fast Delivery</h3>
                         <p style={styles.featureDesc}>Average delivery time of 30 minutes with real-time tracking</p>
                     </div>
-                    <div style={styles.feature}>
+                    <div style={styles.feature} className="saro-home-feature">
                         <div style={styles.featureIcon}>
                             <FaShieldAlt />
                         </div>
                         <h3 style={styles.featureTitle}>Secure Payments</h3>
                         <p style={styles.featureDesc}>Chapa integration & cash on delivery for your convenience</p>
                     </div>
-                    <div style={styles.feature}>
+                    <div style={styles.feature} className="saro-home-feature">
                         <div style={styles.featureIcon}>
                             <FaStar />
                         </div>
@@ -252,11 +309,11 @@ const Home = () => {
                     <h2 style={styles.ctaTitle}>Ready to order your favorite meal?</h2>
                     <p style={styles.ctaText}>Download our app for exclusive offers and faster ordering</p>
                     <div style={styles.ctaButtons}>
-                        <Link to="/vendors" style={styles.ctaButtonPrimary}>
+                        <Link to="/vendors" style={styles.ctaButtonPrimary} className="saro-home-ctaButtonPrimary">
                             Start Ordering Now
                         </Link>
-                        <Link to="/download" style={styles.ctaButtonSecondary}>
-                            Download App
+                        <Link to="/about" style={styles.ctaButtonSecondary} className="saro-home-ctaButtonSecondary">
+                            How It Works
                         </Link>
                     </div>
                 </div>
@@ -622,39 +679,5 @@ const styles = {
         transition: 'all 0.3s ease',
     },
 };
-
-// Add CSS animation
-const styleSheet = document.styleSheets[0];
-styleSheet.insertRule(`
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-`, styleSheet.cssRules.length);
-
-// Add hover effects
-styleSheet.insertRule(`
-    .card:hover {
-        transform: translateY(-10px);
-        box-shadow: 0 20px 40px rgba(0,0,0,0.15);
-    }
-    .card:hover .cardImage {
-        transform: scale(1.05);
-    }
-    .card:hover .viewMenu {
-        color: #d35400;
-    }
-    .primaryButton:hover, .ctaButtonPrimary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(230, 126, 34, 0.6);
-    }
-    .secondaryButton:hover, .seeAllButton:hover, .ctaButtonSecondary:hover {
-        background-color: rgba(255,255,255,0.1);
-        transform: translateY(-2px);
-    }
-    .feature:hover {
-        transform: translateY(-5px);
-    }
-`, styleSheet.cssRules.length);
 
 export default Home;

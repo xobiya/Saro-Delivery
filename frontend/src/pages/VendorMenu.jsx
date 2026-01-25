@@ -2,6 +2,9 @@ import { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import CartContext from '../context/CartContext';
+import { useLocale } from '../context/LocaleContext.jsx';
+import vendorFallbackImage from '../Assets/meat-vegetable-ethiopian-salads.jpg';
+import { resolveVendorBannerUrl } from '../utils/vendorImages';
 
 const VendorMenu = () => {
     const { id } = useParams();
@@ -9,6 +12,7 @@ const VendorMenu = () => {
     const [vendor, setVendor] = useState(null);
     const { addToCart } = useContext(CartContext);
     const navigate = useNavigate();
+    const { t } = useLocale();
 
     useEffect(() => {
         fetchData();
@@ -16,9 +20,9 @@ const VendorMenu = () => {
 
     const fetchData = async () => {
         try {
-            const vendorRes = await api.get(`/vendors/${id}`);
+            const vendorRes = await api.getCached(`/vendors/${id}`, { ttlMs: 10 * 60 * 1000 });
             setVendor(vendorRes.data);
-            const productsRes = await api.get(`/products/vendor/${id}`);
+            const productsRes = await api.getCached(`/products/vendor/${id}`, { ttlMs: 2 * 60 * 1000 });
             setProducts(productsRes.data);
         } catch (error) {
             console.error(error);
@@ -27,18 +31,20 @@ const VendorMenu = () => {
 
     if (!vendor) return <p>Loading...</p>;
 
+    const bannerUrl = resolveVendorBannerUrl(vendor, vendorFallbackImage);
+
     return (
         <div>
-            <div style={{ ...styles.header, backgroundImage: `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url(${vendor.bannerUrl})` }}>
+            <div style={{ ...styles.header, backgroundImage: `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url("${bannerUrl}")` }}>
                 <div className="container">
-                    <button onClick={() => navigate('/dashboard')} style={styles.backBtn}>&larr; Back to Restaurants</button>
+                    <button onClick={() => navigate('/vendors')} style={styles.backBtn}>&larr; {t('vendors.backToVendors')}</button>
                     <h1 style={{ color: '#fff', margin: '0.5rem 0' }}>{vendor.businessName}</h1>
                     <p style={{ color: '#eee' }}>{vendor.description}</p>
                 </div>
             </div>
 
             <div className="container" style={{ marginTop: '2rem' }}>
-                <h3 style={{ marginBottom: '1.5rem' }}>Menu</h3>
+                <h3 style={{ marginBottom: '1.5rem' }}>{t('vendors.menu')}</h3>
                 <div style={styles.grid}>
                     {products.map((product) => (
                         <div key={product._id} style={styles.card}>
@@ -47,7 +53,7 @@ const VendorMenu = () => {
                                 <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: '0.5rem' }}>{product.description}</p>
                                 <p style={{ fontWeight: 'bold', color: '#e67e22' }}>{product.price} ETB</p>
                             </div>
-                            {product.imageUrl && <div style={{ ...styles.prodImg, backgroundImage: `url(${product.imageUrl})` }}></div>}
+                            {product.imageUrl && <div style={{ ...styles.prodImg, backgroundImage: `url("${product.imageUrl}")` }}></div>}
                             <button onClick={() => addToCart(product, vendor._id)} style={styles.addBtn}>+</button>
                         </div>
                     ))}

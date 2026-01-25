@@ -1,3 +1,5 @@
+import aboutImage from '../Assets/top-view-indian-food-assortment.jpg';
+
 const About = () => {
     return (
         <div style={styles.container}>
@@ -10,9 +12,11 @@ const About = () => {
                 <section style={styles.content}>
                     <div style={styles.imageBlock}>
                         <img
-                            src="https://images.unsplash.com/photo-1526367790999-0150786686a2?w=800"
+                            src={aboutImage}
                             alt="Delivery Team"
                             style={styles.image}
+                            loading="lazy"
+                            decoding="async"
                         />
                     </div>
                     <div style={styles.textBlock}>

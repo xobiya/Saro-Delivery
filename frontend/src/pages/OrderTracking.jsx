@@ -42,9 +42,11 @@ const OrderTracking = () => {
     if (loading) return <div style={styles.loading}>Loading tracking data...</div>;
     if (!order) return <div style={styles.error}>Order not found or access denied.</div>;
 
+    const deliveryPhone = order.dropoffLocation?.phone || order.contactPhone || order.user?.phone;
+
     const getStatusText = (status) => {
         switch (status) {
-            case 'pending': return 'Waitng for confirmation...';
+            case 'pending': return 'Waiting for confirmation...';
             case 'preparing': return 'Chef is preparing your meal 👨‍🍳';
             case 'ready': return 'Order is ready and waiting for driver 🛵';
             case 'picked_up': return 'Driver has picked up your order!';
@@ -57,7 +59,7 @@ const OrderTracking = () => {
     return (
         <div style={styles.container}>
             <div style={styles.header}>
-                <button onClick={() => navigate('/dashboard')} style={styles.backBtn}>&larr; Dashboard</button>
+                <button onClick={() => navigate('/profile')} style={styles.backBtn}>&larr; Profile</button>
                 <h2 style={styles.title}>Track Order #{id.substring(0, 8)}</h2>
             </div>
 
@@ -88,6 +90,22 @@ const OrderTracking = () => {
                         <h4>Delivery Details</h4>
                         <p><strong>Customer:</strong> {order.user?.name}</p>
                         <p><strong>Address:</strong> {order.dropoffLocation?.address}</p>
+                        {order.dropoffLocation?.landmark && (
+                            <p><strong>Landmark:</strong> {order.dropoffLocation.landmark}</p>
+                        )}
+                        {order.dropoffLocation?.instructions && (
+                            <p><strong>Instructions:</strong> {order.dropoffLocation.instructions}</p>
+                        )}
+
+                        {deliveryPhone && (
+                            <a
+                                href={`tel:${deliveryPhone}`}
+                                style={styles.callBtn}
+                                aria-label="Call customer"
+                            >
+                                Call Customer ({deliveryPhone})
+                            </a>
+                        )}
                         {order.driver && (
                             <div style={styles.driverInfo}>
                                 <div style={styles.driverAvatar}>🛵</div>
@@ -176,6 +194,19 @@ const styles = {
         borderRadius: '16px',
         border: '1px solid #eee',
         boxShadow: '0 4px 15px rgba(0,0,0,0.05)',
+    },
+    callBtn: {
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: '0.75rem',
+        padding: '0.75rem 1rem',
+        borderRadius: '9999px',
+        backgroundColor: 'var(--color-primary-500)',
+        color: '#fff',
+        fontWeight: 'bold',
+        textDecoration: 'none',
+        minHeight: '44px',
     },
     driverInfo: {
         display: 'flex',

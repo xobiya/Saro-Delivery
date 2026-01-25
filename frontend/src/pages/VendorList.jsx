@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
+import { useLocale } from '../context/LocaleContext.jsx';
+import vendorFallbackImage from '../Assets/meat-vegetable-ethiopian-salads.jpg';
+import { resolveVendorBannerUrl } from '../utils/vendorImages';
 
 const VendorList = () => {
     const [vendors, setVendors] = useState([]);
     const navigate = useNavigate();
+    const { t } = useLocale();
 
     useEffect(() => {
         fetchVendors();
@@ -12,7 +16,7 @@ const VendorList = () => {
 
     const fetchVendors = async () => {
         try {
-            const { data } = await api.get('/vendors');
+            const { data } = await api.getCached('/vendors', { ttlMs: 5 * 60 * 1000 });
             setVendors(data);
         } catch (error) {
             console.error(error);
@@ -21,11 +25,11 @@ const VendorList = () => {
 
     return (
         <div>
-            <h3>Restaurants & Shops in Arba Minch</h3>
+            <h3>{t('vendors.title')}</h3>
             <div style={styles.grid}>
                 {vendors.map((vendor) => (
                     <div key={vendor._id} style={styles.card} onClick={() => navigate(`/menu/${vendor._id}`)}>
-                        <div style={{ ...styles.banner, backgroundImage: `url(${vendor.bannerUrl || 'https://via.placeholder.com/300x150'})` }}></div>
+                        <div style={{ ...styles.banner, backgroundImage: `url("${resolveVendorBannerUrl(vendor, vendorFallbackImage)}")` }}></div>
                         <div style={styles.content}>
                             <div style={styles.headerRow}>
                                 <h4 style={styles.title}>{vendor.businessName}</h4>
@@ -38,7 +42,7 @@ const VendorList = () => {
                                 ))}
                             </div>
                             <p style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: vendor.isOpen ? 'green' : 'red', fontWeight: 'bold' }}>
-                                {vendor.isOpen ? 'Open Now' : 'Closed'}
+                                {vendor.isOpen ? t('vendors.openNow') : t('vendors.closed')}
                             </p>
                         </div>
                     </div>
