@@ -1,4 +1,4 @@
-import haileResortBanner from '../Assets/Haile Resort.jpeg';
+import haileResortBanner from '../Assets/Haile.jpeg';
 
 const normalizeName = (value) => String(value || '').trim().toLowerCase();
 

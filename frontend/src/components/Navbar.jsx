@@ -1,19 +1,27 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useContext, useState } from 'react';
 import AuthContext from '../context/AuthContext';
+import CartContext from '../context/CartContext';
+import { useLocale } from '../context/LocaleContext.jsx';
 
 const Navbar = () => {
     const { user, logout } = useContext(AuthContext);
+    const { cartItems } = useContext(CartContext);
+    const { locale, setLanguage, t } = useLocale();
     const location = useLocation();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+    const cartCount = Array.isArray(cartItems)
+        ? cartItems.reduce((acc, item) => acc + (item?.qty || 0), 0)
+        : 0;
+
     const isActive = (path) => location.pathname === path;
 
-    const getDashboardPath = () => {
+    const getWorkPath = () => {
         if (!user) return '/login';
         if (user.role === 'driver') return '/driver/dashboard';
         if (user.role === 'vendor' || user.role === 'restaurant') return '/vendor-dashboard';
-        return '/dashboard';
+        return '/profile';
     };
 
     const handleLogout = () => {
@@ -30,7 +38,7 @@ const Navbar = () => {
             <div className="container" style={styles.container}>
                 {/* Logo */}
                 <Link to="/" style={styles.logo} onClick={closeMobileMenu}>
-                    Saro Delivery
+                    {t('brand')}
                 </Link>
 
                 {/* Desktop Navigation */}
@@ -42,7 +50,16 @@ const Navbar = () => {
                             ...(isActive('/') ? styles.activeLink : {})
                         }}
                     >
-                        Home
+                        {t('nav.home')}
+                    </Link>
+                    <Link
+                        to="/vendors"
+                        style={{
+                            ...styles.navLink,
+                            ...(isActive('/vendors') ? styles.activeLink : {})
+                        }}
+                    >
+                        {t('nav.vendors')}
                     </Link>
                     <Link
                         to="/about"
@@ -51,7 +68,7 @@ const Navbar = () => {
                             ...(isActive('/about') ? styles.activeLink : {})
                         }}
                     >
-                        About
+                        {t('nav.about')}
                     </Link>
                     <Link
                         to="/contact"
@@ -60,27 +77,60 @@ const Navbar = () => {
                             ...(isActive('/contact') ? styles.activeLink : {})
                         }}
                     >
-                        Contact
+                        {t('nav.contact')}
                     </Link>
                 </div>
 
                 {/* Desktop Auth Links */}
                 <div style={styles.authLinks} className="hide-mobile">
+                    <Link to="/checkout" className="btn btn-outline" style={styles.checkoutBtn}>
+                        {t('nav.checkout')}
+                        {cartCount > 0 && <span style={styles.cartBadge}>{cartCount}</span>}
+                    </Link>
+                    <div style={styles.languageToggle} aria-label="Language">
+                        <button
+                            type="button"
+                            onClick={() => setLanguage('en')}
+                            style={{
+                                ...styles.langBtn,
+                                ...(locale === 'en' ? styles.langBtnActive : {})
+                            }}
+                            aria-pressed={locale === 'en'}
+                        >
+                            EN
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setLanguage('am')}
+                            style={{
+                                ...styles.langBtn,
+                                ...(locale === 'am' ? styles.langBtnActive : {})
+                            }}
+                            aria-pressed={locale === 'am'}
+                        >
+                            አማ
+                        </button>
+                    </div>
                     {user ? (
                         <>
-                            <Link to={getDashboardPath()} style={styles.navLink}>
-                                Dashboard
+                            <Link to="/profile" style={styles.navLink}>
+                                {t('nav.profile', 'Profile')}
                             </Link>
+                            {(user.role === 'driver' || user.role === 'vendor' || user.role === 'restaurant' || user.role === 'admin') ? (
+                                <Link to={getWorkPath()} style={styles.navLink}>
+                                    {t('nav.work', 'Work')}
+                                </Link>
+                            ) : null}
                             <span style={styles.welcome}>Hi, {user.name}</span>
                             <button onClick={handleLogout} className="btn" style={styles.logoutBtn}>
-                                Logout
+                                {t('nav.logout')}
                             </button>
                         </>
                     ) : (
                         <>
-                            <Link to="/login" style={styles.navLink}>Login</Link>
+                            <Link to="/login" style={styles.navLink}>{t('nav.login')}</Link>
                             <Link to="/register" className="btn" style={styles.registerBtn}>
-                                Register
+                                {t('nav.register')}
                             </Link>
                         </>
                     )}
@@ -101,36 +151,72 @@ const Navbar = () => {
             {/* Mobile Menu */}
             {mobileMenuOpen && (
                 <div style={styles.mobileMenu} className="hide-desktop slide-up">
+                    <Link to="/checkout" style={styles.mobileLink} onClick={closeMobileMenu}>
+                        {t('nav.checkout')}{cartCount > 0 ? ` (${cartCount})` : ''}
+                    </Link>
                     <Link to="/" style={styles.mobileLink} onClick={closeMobileMenu}>
-                        Home
+                        {t('nav.home')}
+                    </Link>
+                    <Link to="/vendors" style={styles.mobileLink} onClick={closeMobileMenu}>
+                        {t('nav.vendors')}
                     </Link>
                     <Link to="/about" style={styles.mobileLink} onClick={closeMobileMenu}>
-                        About
+                        {t('nav.about')}
                     </Link>
                     <Link to="/contact" style={styles.mobileLink} onClick={closeMobileMenu}>
-                        Contact
+                        {t('nav.contact')}
                     </Link>
 
                     <div style={styles.mobileDivider}></div>
 
+                    <div style={styles.mobileLanguage}>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setLanguage('en');
+                                closeMobileMenu();
+                            }}
+                            className="btn btn-outline"
+                            style={{ width: '100%' }}
+                        >
+                            EN
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setLanguage('am');
+                                closeMobileMenu();
+                            }}
+                            className="btn btn-outline"
+                            style={{ width: '100%' }}
+                        >
+                            አማ
+                        </button>
+                    </div>
+
                     {user ? (
                         <>
-                            <Link to={getDashboardPath()} style={styles.mobileLink} onClick={closeMobileMenu}>
-                                Dashboard
+                            <Link to="/profile" style={styles.mobileLink} onClick={closeMobileMenu}>
+                                {t('nav.profile', 'Profile')}
                             </Link>
+                            {(user.role === 'driver' || user.role === 'vendor' || user.role === 'restaurant' || user.role === 'admin') ? (
+                                <Link to={getWorkPath()} style={styles.mobileLink} onClick={closeMobileMenu}>
+                                    {t('nav.work', 'Work')}
+                                </Link>
+                            ) : null}
                             <span style={styles.mobileWelcome}>Signed in as {user.name}</span>
                             <button onClick={handleLogout} className="btn btn-outline" style={{ width: '100%' }}>
-                                Logout
+                                {t('nav.logout')}
                             </button>
                         </>
                     ) : (
                         <>
                             <Link to="/login" style={styles.mobileLink} onClick={closeMobileMenu}>
-                                Login
+                                {t('nav.login')}
                             </Link>
                             <Link to="/register" onClick={closeMobileMenu}>
                                 <button className="btn btn-primary" style={{ width: '100%' }}>
-                                    Register
+                                    {t('nav.register')}
                                 </button>
                             </Link>
                         </>
@@ -173,6 +259,52 @@ const styles = {
         display: 'flex',
         gap: 'var(--space-4)',
         alignItems: 'center',
+    },
+    checkoutBtn: {
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 'var(--space-2)',
+        borderColor: 'rgba(255, 255, 255, 0.35)',
+        color: 'rgba(255, 255, 255, 0.95)',
+        backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    },
+    cartBadge: {
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minWidth: '22px',
+        height: '22px',
+        padding: '0 6px',
+        borderRadius: '999px',
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        color: 'var(--color-primary-600)',
+        fontSize: '12px',
+        fontWeight: '800',
+        lineHeight: 1,
+    },
+    languageToggle: {
+        display: 'flex',
+        gap: 'var(--space-2)',
+        alignItems: 'center',
+        padding: '2px',
+        borderRadius: 'var(--radius-full)',
+        backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    },
+    langBtn: {
+        minWidth: '44px',
+        minHeight: '36px',
+        padding: '0 var(--space-3)',
+        borderRadius: 'var(--radius-full)',
+        color: 'rgba(255, 255, 255, 0.9)',
+        fontWeight: 'var(--font-weight-semibold)',
+        fontSize: 'var(--font-size-sm)',
+        border: '1px solid rgba(255, 255, 255, 0.25)',
+        backgroundColor: 'transparent',
+    },
+    langBtnActive: {
+        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+        color: 'var(--color-primary-700)',
+        border: '1px solid rgba(255, 255, 255, 0.9)',
     },
     navLink: {
         color: 'rgba(255, 255, 255, 0.9)',
@@ -228,6 +360,11 @@ const styles = {
         flexDirection: 'column',
         gap: 'var(--space-3)',
         borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+    },
+    mobileLanguage: {
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: 'var(--space-3)',
     },
     mobileLink: {
         color: 'var(--color-neutral-0)',

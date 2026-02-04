@@ -7,6 +7,11 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
+    const setUserInfo = (data) => {
+        localStorage.setItem('userInfo', JSON.stringify(data));
+        setUser(data);
+    };
+
     useEffect(() => {
         const userInfo = localStorage.getItem('userInfo');
         if (userInfo) {
@@ -17,15 +22,13 @@ export const AuthProvider = ({ children }) => {
 
     const login = async (email, password) => {
         const { data } = await api.post('/auth/login', { email, password });
-        localStorage.setItem('userInfo', JSON.stringify(data));
-        setUser(data);
+        setUserInfo(data);
         return data;
     };
 
     const register = async (name, email, password, role, phone) => {
         const { data } = await api.post('/auth/register', { name, email, password, role, phone });
-        localStorage.setItem('userInfo', JSON.stringify(data));
-        setUser(data);
+        setUserInfo(data);
         return data;
     };
 
@@ -35,7 +38,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, login, register, logout, loading }}>
+        <AuthContext.Provider value={{ user, login, register, logout, loading, setUserInfo }}>
             {children}
         </AuthContext.Provider>
     );
