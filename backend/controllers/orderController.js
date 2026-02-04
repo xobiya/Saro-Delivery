@@ -12,20 +12,29 @@ const createOrder = asyncHandler(async (req, res) => {
         items,
         totalAmount,
         notes,
-        vendorId // Explicitly passed from frontend now
+        vendorId, // Explicitly passed from frontend now
+        paymentMethod,
+        contactPhone,
     } = req.body;
 
     if (items && items.length === 0) {
         res.status(400);
         throw new Error('No order items');
     } else {
+        const normalizedDropoff = dropoffLocation || { address: 'Arba Minch' };
+        if (!normalizedDropoff.phone && contactPhone) {
+            normalizedDropoff.phone = contactPhone;
+        }
+
         const order = new Order({
             user: req.user._id,
             vendor: vendorId, // Assign vendor if present
             pickupLocation,
-            dropoffLocation,
+            dropoffLocation: normalizedDropoff,
             items,
             totalAmount,
+            paymentMethod,
+            contactPhone: contactPhone || normalizedDropoff.phone || req.user.phone,
             notes,
         });
 
@@ -77,8 +86,8 @@ const getOrders = asyncHandler(async (req, res) => {
 // @access  Private
 const getOrderById = asyncHandler(async (req, res) => {
     const order = await Order.findById(req.params.id)
-        .populate('user', 'name email')
-        .populate('driver', 'name email');
+        .populate('user', 'name email phone')
+        .populate('driver', 'name email phone');
 
     if (order) {
         res.json(order);

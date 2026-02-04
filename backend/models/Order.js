@@ -21,6 +21,7 @@ const orderSchema = mongoose.Schema({
     },
     pickupLocation: {
         address: { type: String, required: true },
+        landmark: { type: String },
         coordinates: {
             lat: { type: Number },
             lng: { type: Number }
@@ -28,6 +29,9 @@ const orderSchema = mongoose.Schema({
     },
     dropoffLocation: {
         address: { type: String, required: true },
+        landmark: { type: String },
+        phone: { type: String },
+        instructions: { type: String },
         coordinates: {
             lat: { type: Number },
             lng: { type: Number }
@@ -42,6 +46,14 @@ const orderSchema = mongoose.Schema({
         type: Number,
         required: true,
         min: [0, 'Total amount must be positive']
+    },
+    paymentMethod: {
+        type: String,
+        enum: ['cash', 'chapa', 'telebirr', 'cbe_birr', 'mbirr'],
+        default: 'cash',
+    },
+    contactPhone: {
+        type: String,
     },
     status: {
         type: String,

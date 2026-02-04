@@ -2,12 +2,9 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const logger = require('../config/logger');
+const { generateTokenForUser } = require('../utils/jwt');
 
-const generateToken = (id) => {
-    return jwt.sign({ id }, process.env.JWT_SECRET, {
-        expiresIn: process.env.JWT_EXPIRE || '30d',
-    });
-};
+// Note: token creation includes tokenVersion for logout-all support
 
 // @desc    Register new user
 // @route   POST /api/auth/register
@@ -43,7 +40,10 @@ const registerUser = async (req, res) => {
                 name: user.name,
                 email: user.email,
                 role: user.role,
-                token: generateToken(user._id),
+                phone: user.phone || '',
+                avatarUrl: user.avatarUrl || '',
+                authProvider: user.authProvider || 'local',
+                token: generateTokenForUser(user),
             });
         } else {
             res.status(400).json({ message: 'Invalid user data' });
@@ -78,7 +78,10 @@ const loginUser = async (req, res) => {
                 name: user.name,
                 email: user.email,
                 role: user.role,
-                token: generateToken(user._id),
+                phone: user.phone || '',
+                avatarUrl: user.avatarUrl || '',
+                authProvider: user.authProvider || 'local',
+                token: generateTokenForUser(user),
             });
         } else {
             logger.warn('Failed login attempt', { email });
@@ -106,4 +109,29 @@ const getUsers = async (req, res) => {
     }
 };
 
-module.exports = { registerUser, loginUser, getUsers };
+// @desc    Get current user profile
+// @route   GET /api/auth/me
+// @access  Private
+const getMe = async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        res.json({
+            _id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            phone: user.phone || '',
+            avatarUrl: user.avatarUrl || '',
+            authProvider: user.authProvider || 'local',
+        });
+    } catch (error) {
+        logger.error('Failed to fetch current user', { error: error.message });
+        res.status(500).json({ message: 'Failed to fetch user profile' });
+    }
+};
+
+module.exports = { registerUser, loginUser, getUsers, getMe };

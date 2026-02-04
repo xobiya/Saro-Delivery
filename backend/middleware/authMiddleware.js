@@ -16,6 +16,23 @@ const protect = asyncHandler(async (req, res, next) => {
 
             req.user = await User.findById(decoded.id).select('-password');
 
+            if (!req.user) {
+                res.status(401);
+                throw new Error('Not authorized, user not found');
+            }
+
+            if (req.user.active === false) {
+                res.status(403);
+                throw new Error('Account is deactivated');
+            }
+
+            const tokenVersion = typeof decoded.tv === 'number' ? decoded.tv : 0;
+            const currentVersion = typeof req.user.tokenVersion === 'number' ? req.user.tokenVersion : 0;
+            if (tokenVersion !== currentVersion) {
+                res.status(401);
+                throw new Error('Not authorized, token revoked');
+            }
+
             next();
         } catch (error) {
             console.error(error);
