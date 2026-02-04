@@ -1,5 +1,7 @@
 const express = require('express');
 const dotenv = require('dotenv');
+const path = require('path');
+const fs = require('fs');
 const cors = require('cors');
 const morgan = require('morgan');
 const connectDB = require('./config/db');
@@ -10,8 +12,15 @@ const { validateEnvironment, getAllowedOrigins } = require('./config/env');
 
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const session = require('express-session');
+const passport = require('passport');
+const { configurePassport } = require('./config/passport');
 
-dotenv.config();
+// Always load the backend .env (even if server is started from repo root)
+dotenv.config({ path: path.join(__dirname, '.env') });
+
+// Ensure upload folders exist
+fs.mkdirSync(path.join(__dirname, 'uploads', 'avatars'), { recursive: true });
 
 // Validate environment variables before starting
 validateEnvironment();
@@ -73,11 +82,32 @@ if (process.env.NODE_ENV === 'development') {
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// Serve uploaded assets (e.g., avatars)
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Session middleware (needed for OAuth flows)
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || process.env.JWT_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+    },
+  })
+);
+
+// Passport (OAuth)
+configurePassport();
+app.use(passport.initialize());
+
 // Swagger Documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 
 // Routes
 app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/api/profile', require('./routes/profileRoutes'));
 app.use('/api/deliveries', require('./routes/orderRoutes'));
 app.use('/api/vendors', require('./routes/vendorRoutes'));
 app.use('/api/products', require('./routes/productRoutes'));
