@@ -3,15 +3,41 @@ const bcrypt = require('bcryptjs');
 
 const addressSchema = mongoose.Schema({
     label: { type: String, default: 'Home' }, // e.g., Home, Work
-    street: { type: String, required: true },
     city: { type: String, required: true },
-    state: { type: String },
-    zipCode: { type: String },
+    area: { type: String, default: '' }, // neighborhood / kebele
+    streetOrLandmark: { type: String, required: true },
+    notes: { type: String, default: '' },
     coordinates: {
         lat: { type: Number },
         lng: { type: Number }
-    }
-}, { _id: false });
+    },
+    isDefault: { type: Boolean, default: false },
+    active: { type: Boolean, default: true },
+}, { _id: true });
+
+const paymentMethodSchema = mongoose.Schema(
+    {
+        type: {
+            type: String,
+            enum: ['cash_on_delivery', 'mobile_money', 'card'],
+            required: true,
+        },
+        label: { type: String, default: '' },
+
+        // For mobile money (store only what is needed)
+        mobileMoneyProvider: { type: String, default: '' }, // e.g. telebirr, cbe_birr
+        maskedPhone: { type: String, default: '' },
+
+        // For cards (tokenized only)
+        cardBrand: { type: String, default: '' },
+        cardLast4: { type: String, default: '' },
+        tokenRef: { type: String, default: '' }, // token from payment provider (never raw card)
+
+        isDefault: { type: Boolean, default: false },
+        active: { type: Boolean, default: true },
+    },
+    { timestamps: true, _id: true }
+);
 
 const userSchema = mongoose.Schema({
     name: {
@@ -30,7 +56,7 @@ const userSchema = mongoose.Schema({
     },
     password: {
         type: String,
-        required: [true, 'Please add a password'],
+        required: false,
         minlength: 6,
         select: false, // Don't return password by default
     },
@@ -41,26 +67,89 @@ const userSchema = mongoose.Schema({
     },
     phone: {
         type: String,
-        required: [true, 'Please add a phone number'],
+        required: false,
+        default: null,
+    },
+    phoneVerifiedAt: {
+        type: Date,
+        default: null,
+    },
+    emailVerifiedAt: {
+        type: Date,
+        default: null,
+    },
+    authProvider: {
+        type: String,
+        enum: ['local', 'google', 'facebook'],
+        default: 'local',
+    },
+    googleId: {
+        type: String,
+        default: '',
+    },
+    facebookId: {
+        type: String,
+        default: '',
+    },
+    avatarUrl: {
+        type: String,
+        default: '',
     },
     addresses: [addressSchema],
+    paymentMethods: [paymentMethodSchema],
+    preferences: {
+        language: { type: String, enum: ['en', 'am'], default: 'en' },
+        theme: { type: String, enum: ['system', 'light', 'dark'], default: 'system' },
+        notifications: {
+            sms: { type: Boolean, default: true },
+            email: { type: Boolean, default: false },
+            push: { type: Boolean, default: false },
+            promotions: { type: Boolean, default: true },
+        },
+    },
+    twoFactorEnabled: {
+        type: Boolean,
+        default: false,
+    },
+    tokenVersion: {
+        type: Number,
+        default: 0,
+    },
     active: {
         type: Boolean,
         default: true,
-    }
+    },
+    deletedAt: {
+        type: Date,
+        default: null,
+    },
+
+    // One-time re-auth token for sensitive actions (hashed)
+    reauthTokenHash: {
+        type: String,
+        default: '',
+        select: false,
+    },
+    reauthTokenExpiresAt: {
+        type: Date,
+        default: null,
+        select: false,
+    },
 }, {
     timestamps: true,
 });
 
-// Index on email for faster lookups
-userSchema.index({ email: 1 });
+// Email already has a unique index via `unique: true` above.
+// Phone should be unique when present (OTP login)
+userSchema.index({ phone: 1 }, { unique: true, sparse: true });
 
 userSchema.methods.matchPassword = async function (enteredPassword) {
     return await bcrypt.compare(enteredPassword, this.password);
 };
 
 userSchema.pre('save', async function (next) {
-    if (!this.isModified('password')) {
+    // Only hash when password exists and was changed.
+    if (!this.password || !this.isModified('password')) {
         next();
     }
     const salt = await bcrypt.genSalt(10);
