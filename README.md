@@ -5,6 +5,10 @@ A modern, full-stack delivery application for Ethiopian restaurants and vendors 
 ![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
+## 📸 Website Screenshot
+
+![Saro Delivery website screenshot](image.png)
+
 ## ✨ Features
 
 ### 🛒 Customer Features
