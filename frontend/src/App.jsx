@@ -7,16 +7,18 @@ import ErrorBoundary from './components/ErrorBoundary';
 import Navbar from './components/Navbar';
 import Login from './pages/Login';
 import Register from './pages/Register';
-import Dashboard from './pages/Dashboard';
 import Home from './pages/Home';
 import About from './pages/About';
 import Contact from './pages/Contact';
-import CartDrawer from './components/CartDrawer';
 import VendorMenu from './pages/VendorMenu';
 import VendorDashboard from './pages/VendorDashboard';
 import DriverDashboard from './pages/DriverDashboard';
 import OrderTracking from './pages/OrderTracking';
 import ProtectedRoute from './components/ProtectedRoute';
+import VendorList from './pages/VendorList';
+import Checkout from './pages/Checkout';
+import OAuthCallback from './pages/OAuthCallback';
+import Profile from './pages/Profile';
 
 function App() {
     return (
@@ -27,19 +29,29 @@ function App() {
                         <ToastProvider>
                             <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                                 <Navbar />
-                                <CartDrawer />
                                 <Routes>
                                     <Route path="/" element={<Home />} />
+                                    <Route path="/vendors" element={<VendorList />} />
                                     <Route path="/about" element={<About />} />
                                     <Route path="/contact" element={<Contact />} />
                                     <Route path="/login" element={<Login />} />
                                     <Route path="/register" element={<Register />} />
+                                    <Route path="/oauth/callback" element={<OAuthCallback />} />
 
                                     <Route
-                                        path="/dashboard"
+                                        path="/checkout"
                                         element={
-                                            <ProtectedRoute allowedRoles={['customer', 'admin', 'driver']}>
-                                                <Dashboard />
+                                            <ProtectedRoute allowedRoles={['customer', 'admin']}>
+                                                <Checkout />
+                                            </ProtectedRoute>
+                                        }
+                                    />
+
+                                    <Route
+                                        path="/profile"
+                                        element={
+                                            <ProtectedRoute allowedRoles={['customer', 'admin', 'driver', 'vendor', 'restaurant']}>
+                                                <Profile />
                                             </ProtectedRoute>
                                         }
                                     />
