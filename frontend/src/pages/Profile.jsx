@@ -3,6 +3,7 @@ import api from '../utils/api';
 import AuthContext from '../context/AuthContext';
 import ToastContext from '../context/ToastContext';
 import { useLocale } from '../context/LocaleContext.jsx';
+import { FaUserEdit, FaMapMarkerAlt, FaHistory, FaShieldAlt, FaCamera, FaSpinner } from 'react-icons/fa';
 
 const safeErr = (err) => {
     const msg = err?.response?.data?.message || err?.response?.data?.error || err?.message;
@@ -204,437 +205,339 @@ const Profile = () => {
 
     if (loading) {
         return (
-            <div className="container" style={{ paddingBottom: 'var(--space-10)' }}>
-                <h2 style={{ marginBottom: 'var(--space-2)' }}>{t('profile.title', 'Profile')}</h2>
-                <div className="card">{t('common.loading', 'Loading…')}</div>
+            <div className="flex justify-center items-center min-h-[50vh] pt-32">
+                <div className="w-12 h-12 border-4 border-gray-200 border-t-orange-500 rounded-full animate-spin"></div>
             </div>
         );
     }
 
     return (
-        <div className="container" style={{ paddingBottom: 'var(--space-10)' }}>
-            <div style={styles.headerRow}>
-                <div>
-                    <h2 style={{ marginBottom: 'var(--space-1)' }}>{t('profile.title', 'Profile')}</h2>
-                    <div style={styles.subtle}>
-                        {user?.role ? `${user.role}` : ''}
-                        {profile?.phoneVerified ? ' • phone verified' : ''}
-                        {profile?.emailVerified ? ' • email verified' : ''}
+        <div className="bg-gray-50 min-h-screen pt-32 pb-20">
+            <div className="container mx-auto px-4 max-w-6xl">
+                
+                {/* Profile Header */}
+                <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8 mb-8 flex flex-col md:flex-row items-center justify-between gap-6 animate-fade-in-up">
+                    <div className="flex flex-col md:flex-row items-center gap-6">
+                        <div className="relative group">
+                            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center overflow-hidden shadow-lg border-4 border-white relative z-10">
+                                {profile?.avatarUrl ? (
+                                    <img src={profile.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                                ) : (
+                                    <span className="text-white font-extrabold text-3xl">{(profile?.name || 'U').charAt(0).toUpperCase()}</span>
+                                )}
+                            </div>
+                            <label className="absolute bottom-0 right-0 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-md border border-gray-100 cursor-pointer text-orange-500 hover:text-orange-600 hover:bg-orange-50 transition-colors z-20">
+                                {avatarUploading ? <FaSpinner className="animate-spin text-sm" /> : <FaCamera className="text-sm" />}
+                                <input
+                                    type="file"
+                                    accept="image/png,image/jpeg,image/webp"
+                                    className="hidden"
+                                    disabled={avatarUploading}
+                                    onChange={(e) => onUploadAvatar(e.target.files?.[0])}
+                                />
+                            </label>
+                        </div>
+                        <div className="text-center md:text-left">
+                            <h2 className="text-3xl font-extrabold text-gray-900 font-display mb-1">{profile?.name || 'User Profile'}</h2>
+                            <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 text-sm text-gray-500 font-medium">
+                                <span className="capitalize px-2 py-1 bg-gray-100 rounded-md">{user?.role}</span>
+                                {profile?.phoneVerified && <span className="text-green-600 bg-green-50 px-2 py-1 rounded-md">✓ Phone Verified</span>}
+                                {profile?.emailVerified && <span className="text-blue-600 bg-blue-50 px-2 py-1 rounded-md">✓ Email Verified</span>}
+                            </div>
+                        </div>
                     </div>
-                </div>
-
-                <div style={styles.avatarWrap}>
-                    <div style={styles.avatar}>
-                        {profile?.avatarUrl ? (
-                            <img src={profile.avatarUrl} alt="avatar" style={styles.avatarImg} />
-                        ) : (
-                            <span style={styles.avatarInitials}>{(profile?.name || 'U').slice(0, 1).toUpperCase()}</span>
-                        )}
-                    </div>
-                    <label className="btn btn-outline" style={{ cursor: avatarUploading ? 'not-allowed' : 'pointer' }}>
-                        {avatarUploading ? t('profile.uploading', 'Uploading…') : t('profile.changePhoto', 'Change')}
-                        <input
-                            type="file"
-                            accept="image/png,image/jpeg,image/webp"
-                            style={{ display: 'none' }}
-                            disabled={avatarUploading}
-                            onChange={(e) => onUploadAvatar(e.target.files?.[0])}
-                        />
-                    </label>
-                </div>
-            </div>
-
-            <div style={styles.grid}>
-                <div className="card" style={styles.card}>
-                    <h3 style={styles.cardTitle}>{t('profile.personal', 'Personal info')}</h3>
-                    <form onSubmit={onSaveProfile} style={{ display: 'grid', gap: 'var(--space-3)' }}>
-                        <div>
-                            <label style={styles.label}>{t('profile.name', 'Full name')}</label>
-                            <input
-                                className="input"
-                                value={form.name}
-                                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                                placeholder={t('profile.namePh', 'Your name')}
-                            />
-                        </div>
-                        <div>
-                            <label style={styles.label}>{t('profile.email', 'Email')}</label>
-                            <input
-                                className="input"
-                                value={form.email}
-                                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                                placeholder="name@example.com"
-                            />
-                        </div>
-                        <div>
-                            <label style={styles.label}>{t('profile.phone', 'Phone')}</label>
-                            <input className="input" value={profile?.phone || ''} readOnly />
-                            <div style={styles.hint}>{t('profile.phoneHint', 'To change phone: use Security below')}</div>
-                        </div>
-
-                        <div style={styles.twoCol}>
-                            <div>
-                                <label style={styles.label}>{t('profile.language', 'Language')}</label>
-                                <select
-                                    className="input"
-                                    value={form.language}
-                                    onChange={(e) => setForm((f) => ({ ...f, language: e.target.value }))}
-                                >
-                                    <option value="en">English</option>
-                                    <option value="am">አማርኛ</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label style={styles.label}>{t('profile.theme', 'Theme')}</label>
-                                <select
-                                    className="input"
-                                    value={form.theme}
-                                    onChange={(e) => setForm((f) => ({ ...f, theme: e.target.value }))}
-                                >
-                                    <option value="system">System</option>
-                                    <option value="light">Light</option>
-                                    <option value="dark">Dark</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div style={styles.switchGrid}>
-                            <label style={styles.switchRow}>
-                                <input
-                                    type="checkbox"
-                                    checked={form.notifications.sms}
-                                    onChange={(e) =>
-                                        setForm((f) => ({ ...f, notifications: { ...f.notifications, sms: e.target.checked } }))
-                                    }
-                                />
-                                <span>{t('profile.nSms', 'SMS updates')}</span>
-                            </label>
-                            <label style={styles.switchRow}>
-                                <input
-                                    type="checkbox"
-                                    checked={form.notifications.email}
-                                    onChange={(e) =>
-                                        setForm((f) => ({ ...f, notifications: { ...f.notifications, email: e.target.checked } }))
-                                    }
-                                />
-                                <span>{t('profile.nEmail', 'Email updates')}</span>
-                            </label>
-                            <label style={styles.switchRow}>
-                                <input
-                                    type="checkbox"
-                                    checked={form.notifications.push}
-                                    onChange={(e) =>
-                                        setForm((f) => ({ ...f, notifications: { ...f.notifications, push: e.target.checked } }))
-                                    }
-                                />
-                                <span>{t('profile.nPush', 'Push notifications')}</span>
-                            </label>
-                            <label style={styles.switchRow}>
-                                <input
-                                    type="checkbox"
-                                    checked={form.notifications.promotions}
-                                    onChange={(e) =>
-                                        setForm((f) => ({ ...f, notifications: { ...f.notifications, promotions: e.target.checked } }))
-                                    }
-                                />
-                                <span>{t('profile.nPromo', 'Promotions')}</span>
-                            </label>
-                        </div>
-
-                        <button className="btn btn-primary" disabled={saving} type="submit">
-                            {saving ? t('profile.saving', 'Saving…') : t('profile.save', 'Save changes')}
-                        </button>
-                    </form>
-                </div>
-
-                <div className="card" style={styles.card}>
-                    <h3 style={styles.cardTitle}>{t('profile.addresses', 'Saved addresses')}</h3>
-
-                    {addresses.length === 0 ? (
-                        <div style={styles.empty}>{t('profile.noAddresses', 'No saved addresses yet.')}</div>
-                    ) : (
-                        <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
-                            {addresses.map((a) => (
-                                <div key={a._id} style={styles.addressItem}>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={styles.addressTop}>
-                                            <strong>{a.label || 'Address'}</strong>
-                                            {a.isDefault ? <span style={styles.badge}>{t('profile.default', 'Default')}</span> : null}
-                                        </div>
-                                        <div style={styles.subtle}>{[a.city, a.area].filter(Boolean).join(' • ')}</div>
-                                        <div style={{ marginTop: 4 }}>{a.streetOrLandmark}</div>
-                                        {a.notes ? <div style={styles.hint}>{a.notes}</div> : null}
-                                    </div>
-                                    <div style={styles.addrActions}>
-                                        {!a.isDefault ? (
-                                            <button className="btn btn-outline" onClick={() => onSetDefaultAddress(a._id)}>
-                                                {t('profile.makeDefault', 'Make default')}
-                                            </button>
-                                        ) : null}
-                                        <button className="btn btn-outline" onClick={() => onDeleteAddress(a._id)}>
-                                            {t('profile.delete', 'Delete')}
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-
-                    <div style={styles.divider}></div>
-
-                    <form onSubmit={onAddAddress} style={{ display: 'grid', gap: 'var(--space-3)' }}>
-                        <div style={styles.twoCol}>
-                            <div>
-                                <label style={styles.label}>{t('profile.addrLabel', 'Label')}</label>
-                                <input
-                                    className="input"
-                                    value={addressDraft.label}
-                                    onChange={(e) => setAddressDraft((d) => ({ ...d, label: e.target.value }))}
-                                    placeholder="Home"
-                                />
-                            </div>
-                            <div>
-                                <label style={styles.label}>{t('profile.city', 'City')}</label>
-                                <input
-                                    className="input"
-                                    value={addressDraft.city}
-                                    onChange={(e) => setAddressDraft((d) => ({ ...d, city: e.target.value }))}
-                                />
-                            </div>
-                        </div>
-                        <div>
-                            <label style={styles.label}>{t('profile.area', 'Area / kebele')}</label>
-                            <input
-                                className="input"
-                                value={addressDraft.area}
-                                onChange={(e) => setAddressDraft((d) => ({ ...d, area: e.target.value }))}
-                                placeholder={t('profile.areaPh', 'Optional')}
-                            />
-                        </div>
-                        <div>
-                            <label style={styles.label}>{t('profile.street', 'Street or landmark')}</label>
-                            <input
-                                className="input"
-                                value={addressDraft.streetOrLandmark}
-                                onChange={(e) => setAddressDraft((d) => ({ ...d, streetOrLandmark: e.target.value }))}
-                                placeholder={t('profile.streetPh', 'e.g., Secha, near Arbaminch University gate')}
-                                required
-                            />
-                        </div>
-                        <div>
-                            <label style={styles.label}>{t('profile.notes', 'Notes')}</label>
-                            <input
-                                className="input"
-                                value={addressDraft.notes}
-                                onChange={(e) => setAddressDraft((d) => ({ ...d, notes: e.target.value }))}
-                                placeholder={t('profile.notesPh', 'Optional: gate color, call when arriving…')}
-                            />
-                        </div>
-                        <label style={styles.switchRow}>
-                            <input
-                                type="checkbox"
-                                checked={addressDraft.isDefault}
-                                onChange={(e) => setAddressDraft((d) => ({ ...d, isDefault: e.target.checked }))}
-                            />
-                            <span>{t('profile.setDefault', 'Set as default')}</span>
-                        </label>
-                        <button className="btn btn-primary" type="submit">
-                            {t('profile.addAddress', 'Add address')}
-                        </button>
-                    </form>
-                </div>
-
-                <div className="card" style={styles.card}>
-                    <h3 style={styles.cardTitle}>{t('profile.orders', 'Order history')}</h3>
-                    {ordersLoading ? (
-                        <div style={styles.subtle}>{t('common.loading', 'Loading…')}</div>
-                    ) : orders.length === 0 ? (
-                        <div style={styles.empty}>{t('profile.noOrders', 'No orders yet.')}</div>
-                    ) : (
-                        <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
-                            {orders.slice(0, 10).map((o) => (
-                                <div key={o._id} style={styles.orderItem}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
-                                        <strong>#{String(o._id).slice(-6)}</strong>
-                                        <span style={styles.badge}>{o.status || 'pending'}</span>
-                                    </div>
-                                    <div style={styles.subtle}>
-                                        {(o.items?.length || 0)} items • {o.totalAmount} {t('common.etb', 'ETB')}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-
-                <div className="card" style={styles.card}>
-                    <h3 style={styles.cardTitle}>{t('profile.security', 'Security')}</h3>
-
-                    <button className="btn btn-outline" onClick={onLogoutAll}>
-                        {t('profile.logoutAll', 'Logout all devices')}
+                    <button onClick={logout} className="px-6 py-2 border-2 border-gray-200 text-gray-600 font-bold rounded-xl hover:bg-gray-100 transition-colors">
+                        Sign Out
                     </button>
+                </div>
 
-                    <div style={styles.divider}></div>
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                    
+                    {/* Left Column (Forms & Settings) */}
+                    <div className="lg:col-span-7 space-y-8 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+                        
+                        {/* Personal Info Card */}
+                        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                            <div className="bg-gray-900 px-6 py-4 flex items-center gap-3">
+                                <FaUserEdit className="text-orange-500" />
+                                <h3 className="text-lg font-bold text-white">Personal Information</h3>
+                            </div>
+                            <div className="p-6 md:p-8">
+                                <form onSubmit={onSaveProfile} className="space-y-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 mb-2">Full Name</label>
+                                            <input
+                                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:bg-white transition-colors"
+                                                value={form.name}
+                                                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                                                placeholder="Your name"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 mb-2">Email Address</label>
+                                            <input
+                                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:bg-white transition-colors"
+                                                value={form.email}
+                                                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                                                placeholder="name@example.com"
+                                            />
+                                        </div>
+                                    </div>
 
-                    <div style={styles.subtle}>{t('profile.deleteInfo', 'Deleting an account requires phone verification (OTP).')}</div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">Phone Number</label>
+                                        <input 
+                                            className="w-full px-4 py-3 bg-gray-100 border border-gray-200 rounded-xl text-gray-500 cursor-not-allowed" 
+                                            value={profile?.phone || ''} 
+                                            readOnly 
+                                            title="Phone numbers cannot be changed directly."
+                                        />
+                                    </div>
 
-                    {reauthStep === 'idle' ? (
-                        <button className="btn btn-outline" onClick={startReauth} disabled={deleting || avatarUploading}>
-                            {t('profile.verifyToDelete', 'Verify to delete account')}
-                        </button>
-                    ) : null}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 mb-2">Language</label>
+                                            <select
+                                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                                value={form.language}
+                                                onChange={(e) => setForm({ ...form, language: e.target.value })}
+                                            >
+                                                <option value="en">English</option>
+                                                <option value="am">አማርኛ</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 mb-2">Theme Preference</label>
+                                            <select
+                                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                                value={form.theme}
+                                                onChange={(e) => setForm({ ...form, theme: e.target.value })}
+                                            >
+                                                <option value="system">System Default</option>
+                                                <option value="light">Light Mode</option>
+                                                <option value="dark">Dark Mode</option>
+                                            </select>
+                                        </div>
+                                    </div>
 
-                    {reauthStep === 'sent' ? (
-                        <div style={{ display: 'grid', gap: 'var(--space-2)' }}>
-                            <input
-                                className="input"
-                                value={reauthCode}
-                                onChange={(e) => setReauthCode(e.target.value)}
-                                placeholder={t('profile.codePh', 'Enter 6-digit code')}
-                                inputMode="numeric"
-                            />
-                            <div style={styles.twoCol}>
-                                <button className="btn btn-outline" type="button" onClick={startReauth}>
-                                    {t('profile.resend', 'Resend')}
-                                </button>
-                                <button className="btn btn-primary" type="button" onClick={verifyReauth}>
-                                    {t('profile.verify', 'Verify')}
-                                </button>
+                                    <div className="border-t border-gray-100 pt-6">
+                                        <label className="block text-sm font-bold text-gray-700 mb-4">Notification Preferences</label>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            {[
+                                                { id: 'sms', label: 'SMS Order Updates' },
+                                                { id: 'email', label: 'Email Order Updates' },
+                                                { id: 'push', label: 'Push Notifications' },
+                                                { id: 'promotions', label: 'Promotions & Offers' }
+                                            ].map((pref) => (
+                                                <label key={pref.id} className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border border-gray-100 hover:bg-gray-50 transition-colors">
+                                                    <div className="relative">
+                                                        <input
+                                                            type="checkbox"
+                                                            className="sr-only"
+                                                            checked={form.notifications[pref.id]}
+                                                            onChange={(e) => setForm({
+                                                                ...form,
+                                                                notifications: { ...form.notifications, [pref.id]: e.target.checked }
+                                                            })}
+                                                        />
+                                                        <div className={`block w-10 h-6 rounded-full transition-colors ${form.notifications[pref.id] ? 'bg-orange-500' : 'bg-gray-300'}`}></div>
+                                                        <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${form.notifications[pref.id] ? 'transform translate-x-4' : ''}`}></div>
+                                                    </div>
+                                                    <span className="text-sm font-medium text-gray-700">{pref.label}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <button 
+                                        type="submit" 
+                                        className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-8 rounded-xl shadow-md transition-all flex items-center justify-center disabled:opacity-50"
+                                        disabled={saving}
+                                    >
+                                        {saving ? <FaSpinner className="animate-spin mr-2" /> : null}
+                                        {saving ? 'Saving Changes...' : 'Save Changes'}
+                                    </button>
+                                </form>
                             </div>
                         </div>
-                    ) : null}
 
-                    {reauthStep === 'verified' ? (
-                        <button className="btn" style={{ background: 'var(--color-error-500)' }} onClick={onDeleteAccount} disabled={deleting}>
-                            {deleting ? t('profile.deleting', 'Deleting…') : t('profile.deleteAccount', 'Delete account')}
-                        </button>
-                    ) : null}
+                        {/* Security Card */}
+                        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                            <div className="bg-gray-900 px-6 py-4 flex items-center gap-3">
+                                <FaShieldAlt className="text-orange-500" />
+                                <h3 className="text-lg font-bold text-white">Security & Account</h3>
+                            </div>
+                            <div className="p-6 md:p-8 space-y-6">
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 border border-gray-100 rounded-xl bg-gray-50">
+                                    <div>
+                                        <h4 className="font-bold text-gray-900">Active Sessions</h4>
+                                        <p className="text-sm text-gray-500">Sign out from all other browsers and devices.</p>
+                                    </div>
+                                    <button className="px-4 py-2 border-2 border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors whitespace-nowrap" onClick={onLogoutAll}>
+                                        Logout Everywhere
+                                    </button>
+                                </div>
+
+                                <div className="pt-4 border-t border-gray-100">
+                                    <h4 className="font-bold text-red-600 mb-2">Danger Zone</h4>
+                                    <p className="text-sm text-gray-500 mb-4">Deleting an account requires phone verification (OTP). This action cannot be undone.</p>
+                                    
+                                    {reauthStep === 'idle' && (
+                                        <button className="px-4 py-2 bg-red-50 text-red-600 font-bold rounded-xl hover:bg-red-100 transition-colors border border-red-200" onClick={startReauth} disabled={deleting || avatarUploading}>
+                                            Verify to Delete Account
+                                        </button>
+                                    )}
+
+                                    {reauthStep === 'sent' && (
+                                        <div className="bg-red-50 p-4 rounded-xl border border-red-100 space-y-3">
+                                            <input
+                                                className="w-full px-4 py-3 bg-white border border-red-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500"
+                                                value={reauthCode}
+                                                onChange={(e) => setReauthCode(e.target.value)}
+                                                placeholder="Enter 6-digit OTP code"
+                                                inputMode="numeric"
+                                            />
+                                            <div className="flex gap-3">
+                                                <button className="flex-1 px-4 py-2 bg-white border border-red-200 text-red-600 font-bold rounded-xl hover:bg-red-50" onClick={startReauth}>
+                                                    Resend Code
+                                                </button>
+                                                <button className="flex-1 px-4 py-2 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 shadow-md" onClick={verifyReauth}>
+                                                    Verify
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {reauthStep === 'verified' && (
+                                        <button className="w-full px-4 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-lg transition-colors flex items-center justify-center disabled:opacity-50" onClick={onDeleteAccount} disabled={deleting}>
+                                            {deleting ? <FaSpinner className="animate-spin mr-2" /> : null}
+                                            {deleting ? 'Deleting Account...' : 'Permanently Delete Account'}
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    {/* Right Column (Addresses & Orders) */}
+                    <div className="lg:col-span-5 space-y-8 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+                        
+                        {/* Saved Addresses */}
+                        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                            <div className="bg-gray-900 px-6 py-4 flex items-center gap-3">
+                                <FaMapMarkerAlt className="text-orange-500" />
+                                <h3 className="text-lg font-bold text-white">Saved Addresses</h3>
+                            </div>
+                            <div className="p-6">
+                                {addresses.length === 0 ? (
+                                    <div className="bg-gray-50 p-4 rounded-xl text-center text-gray-500 text-sm border border-gray-100 mb-6">
+                                        No saved addresses yet. Add one below to speed up checkout.
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4 mb-6 max-h-80 overflow-y-auto pr-2 custom-scrollbar">
+                                        {addresses.map((a) => (
+                                            <div key={a._id} className={`p-4 rounded-xl border-2 transition-all ${a.isDefault ? 'border-orange-500 bg-orange-50' : 'border-gray-100 bg-white hover:border-orange-200'}`}>
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <strong className="text-gray-900">{a.label || 'Address'}</strong>
+                                                        {a.isDefault && <span className="bg-orange-500 text-white text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">Default</span>}
+                                                    </div>
+                                                </div>
+                                                <p className="text-sm text-gray-600 mb-1">{[a.city, a.area].filter(Boolean).join(', ')}</p>
+                                                <p className="text-sm font-medium text-gray-800 mb-3">{a.streetOrLandmark}</p>
+                                                {a.notes && <p className="text-xs text-gray-500 bg-white p-2 rounded border border-gray-100 mb-3 italic">"{a.notes}"</p>}
+                                                
+                                                <div className="flex gap-2 pt-2 border-t border-gray-200/60 mt-2">
+                                                    {!a.isDefault && (
+                                                        <button className="text-xs font-bold text-orange-600 hover:text-orange-700" onClick={() => onSetDefaultAddress(a._id)}>
+                                                            Set as Default
+                                                        </button>
+                                                    )}
+                                                    <div className="flex-1"></div>
+                                                    <button className="text-xs font-bold text-red-500 hover:text-red-700" onClick={() => onDeleteAddress(a._id)}>
+                                                        Delete
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                <div className="border-t border-gray-100 pt-6">
+                                    <h4 className="font-bold text-gray-900 mb-4">Add New Address</h4>
+                                    <form onSubmit={onAddAddress} className="space-y-4">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <input className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm" value={addressDraft.label} onChange={(e) => setAddressDraft({ ...addressDraft, label: e.target.value })} placeholder="Label (e.g. Home)" />
+                                            </div>
+                                            <div>
+                                                <input className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm" value={addressDraft.city} onChange={(e) => setAddressDraft({ ...addressDraft, city: e.target.value })} placeholder="City" />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <input className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm" value={addressDraft.streetOrLandmark} onChange={(e) => setAddressDraft({ ...addressDraft, streetOrLandmark: e.target.value })} placeholder="Street or Landmark *" required />
+                                        </div>
+                                        <div>
+                                            <input className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm" value={addressDraft.area} onChange={(e) => setAddressDraft({ ...addressDraft, area: e.target.value })} placeholder="Area / Kebele (Optional)" />
+                                        </div>
+                                        <div>
+                                            <input className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm" value={addressDraft.notes} onChange={(e) => setAddressDraft({ ...addressDraft, notes: e.target.value })} placeholder="Delivery Notes (Optional)" />
+                                        </div>
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input type="checkbox" className="rounded text-orange-500 focus:ring-orange-500" checked={addressDraft.isDefault} onChange={(e) => setAddressDraft({ ...addressDraft, isDefault: e.target.checked })} />
+                                            <span className="text-sm font-medium text-gray-700">Set as default address</span>
+                                        </label>
+                                        <button type="submit" className="w-full bg-gray-900 hover:bg-black text-white font-bold py-2 px-4 rounded-lg transition-colors text-sm shadow-md">
+                                            Save Address
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Recent Orders */}
+                        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                            <div className="bg-gray-900 px-6 py-4 flex items-center gap-3">
+                                <FaHistory className="text-orange-500" />
+                                <h3 className="text-lg font-bold text-white">Recent Orders</h3>
+                            </div>
+                            <div className="p-6">
+                                {ordersLoading ? (
+                                    <div className="flex justify-center py-8">
+                                        <FaSpinner className="animate-spin text-orange-500 text-2xl" />
+                                    </div>
+                                ) : orders.length === 0 ? (
+                                    <div className="bg-gray-50 p-4 rounded-xl text-center text-gray-500 text-sm border border-gray-100">
+                                        No order history found.
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {orders.slice(0, 5).map((o) => (
+                                            <div key={o._id} className="p-4 rounded-xl border border-gray-100 bg-gray-50 hover:bg-gray-100 transition-colors">
+                                                <div className="flex justify-between items-center mb-2">
+                                                    <strong className="text-gray-900 font-mono text-sm">#{String(o._id).slice(-6).toUpperCase()}</strong>
+                                                    <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded-md ${o.status === 'delivered' ? 'bg-green-100 text-green-700' : o.status === 'cancelled' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
+                                                        {o.status || 'pending'}
+                                                    </span>
+                                                </div>
+                                                <div className="flex justify-between items-center text-sm">
+                                                    <span className="text-gray-500">{(o.items?.length || 0)} items</span>
+                                                    <span className="font-extrabold text-gray-900">{o.totalAmount} ETB</span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                    </div>
                 </div>
             </div>
         </div>
     );
-};
-
-const styles = {
-    headerRow: {
-        display: 'flex',
-        alignItems: 'flex-start',
-        justifyContent: 'space-between',
-        gap: 'var(--space-4)',
-        marginBottom: 'var(--space-6)',
-        flexWrap: 'wrap',
-    },
-    subtle: {
-        color: 'var(--color-text-light)',
-        fontSize: 'var(--font-size-sm)',
-    },
-    grid: {
-        display: 'grid',
-        gap: 'var(--space-6)',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-    },
-    card: {
-        padding: 'var(--space-5)',
-    },
-    cardTitle: {
-        marginTop: 0,
-        marginBottom: 'var(--space-4)',
-    },
-    label: {
-        display: 'block',
-        marginBottom: 6,
-        fontWeight: 'var(--font-weight-medium)',
-    },
-    hint: {
-        marginTop: 6,
-        fontSize: 'var(--font-size-xs)',
-        color: 'var(--color-text-light)',
-    },
-    twoCol: {
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: 'var(--space-3)',
-    },
-    switchGrid: {
-        display: 'grid',
-        gap: 'var(--space-2)',
-    },
-    switchRow: {
-        display: 'flex',
-        gap: 'var(--space-2)',
-        alignItems: 'center',
-        fontSize: 'var(--font-size-sm)',
-    },
-    divider: {
-        height: 1,
-        background: 'rgba(0,0,0,0.06)',
-        margin: 'var(--space-5) 0',
-    },
-    empty: {
-        padding: 'var(--space-4)',
-        borderRadius: 'var(--radius-lg)',
-        background: 'var(--color-neutral-50)',
-        color: 'var(--color-text-light)',
-    },
-    badge: {
-        display: 'inline-flex',
-        alignItems: 'center',
-        padding: '2px 10px',
-        borderRadius: 999,
-        background: 'var(--color-secondary-50)',
-        color: 'var(--color-secondary-700)',
-        fontSize: 'var(--font-size-xs)',
-        fontWeight: 'var(--font-weight-medium)',
-    },
-    addressItem: {
-        display: 'flex',
-        gap: 'var(--space-3)',
-        border: '1px solid rgba(0,0,0,0.06)',
-        borderRadius: 'var(--radius-xl)',
-        padding: 'var(--space-4)',
-        background: 'var(--color-surface)',
-    },
-    addressTop: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: 'var(--space-2)',
-    },
-    addrActions: {
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 'var(--space-2)',
-        minWidth: 130,
-    },
-    orderItem: {
-        border: '1px solid rgba(0,0,0,0.06)',
-        borderRadius: 'var(--radius-xl)',
-        padding: 'var(--space-4)',
-        background: 'var(--color-surface)',
-    },
-    avatarWrap: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: 'var(--space-3)',
-    },
-    avatar: {
-        width: 56,
-        height: 56,
-        borderRadius: '50%',
-        background: 'linear-gradient(135deg, var(--color-primary-500), var(--color-secondary-500))',
-        display: 'grid',
-        placeItems: 'center',
-        overflow: 'hidden',
-    },
-    avatarInitials: {
-        color: 'white',
-        fontWeight: 'var(--font-weight-bold)',
-        fontSize: 'var(--font-size-lg)',
-    },
-    avatarImg: {
-        width: '100%',
-        height: '100%',
-        objectFit: 'cover',
-    },
 };
 
 export default Profile;

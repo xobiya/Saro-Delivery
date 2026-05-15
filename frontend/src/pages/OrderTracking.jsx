@@ -1,5 +1,6 @@
 import { useState, useEffect, useContext } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { FaArrowLeft, FaPhoneAlt, FaMapMarkerAlt, FaMotorcycle, FaCheckCircle, FaSpinner } from 'react-icons/fa';
 import api from '../utils/api';
 import MapView from '../components/MapView';
 import SocketContext from '../context/SocketContext';
@@ -39,8 +40,25 @@ const OrderTracking = () => {
         }
     };
 
-    if (loading) return <div style={styles.loading}>Loading tracking data...</div>;
-    if (!order) return <div style={styles.error}>Order not found or access denied.</div>;
+    if (loading) {
+        return (
+            <div className="flex flex-col justify-center items-center min-h-screen bg-gray-50 pt-20">
+                <div className="w-16 h-16 border-4 border-gray-200 border-t-orange-500 rounded-full animate-spin shadow-lg mb-4"></div>
+                <h2 className="text-xl font-bold text-gray-700">Loading tracking data...</h2>
+            </div>
+        );
+    }
+
+    if (!order) {
+        return (
+            <div className="flex flex-col justify-center items-center min-h-screen bg-gray-50 pt-20 text-center">
+                <FaCheckCircle className="text-6xl text-red-400 mb-4" />
+                <h2 className="text-3xl font-bold text-gray-800 mb-4">Order Not Found</h2>
+                <p className="text-gray-500 mb-6">We couldn't find the order you are looking for.</p>
+                <button onClick={() => navigate('/profile')} className="bg-orange-500 text-white font-bold py-3 px-8 rounded-full hover:bg-orange-600 transition-colors shadow-lg">Go to Profile</button>
+            </div>
+        );
+    }
 
     const deliveryPhone = order.dropoffLocation?.phone || order.contactPhone || order.user?.phone;
 
@@ -55,179 +73,148 @@ const OrderTracking = () => {
             default: return status;
         }
     };
+    
+    const getProgressWidth = (status) => {
+        switch (status) {
+            case 'pending': return '20%';
+            case 'preparing': return '40%';
+            case 'ready': return '50%';
+            case 'picked_up': return '60%';
+            case 'in_transit': return '80%';
+            case 'delivered': return '100%';
+            default: return '20%';
+        }
+    }
 
     return (
-        <div style={styles.container}>
-            <div style={styles.header}>
-                <button onClick={() => navigate('/profile')} style={styles.backBtn}>&larr; Profile</button>
-                <h2 style={styles.title}>Track Order #{id.substring(0, 8)}</h2>
-            </div>
-
-            <div style={styles.grid}>
-                <div style={styles.mapSide}>
-                    <MapView
-                        pickup={order.pickupLocation}
-                        dropoff={order.dropoffLocation}
-                    />
+        <div className="bg-gray-50 min-h-screen pt-32 pb-20">
+            <div className="container mx-auto px-4 max-w-6xl h-full flex flex-col">
+                
+                {/* Header */}
+                <div className="flex items-center gap-4 mb-6 animate-fade-in-up">
+                    <button 
+                        onClick={() => navigate('/profile')} 
+                        className="w-10 h-10 bg-white rounded-full shadow-sm flex items-center justify-center text-gray-500 hover:text-orange-500 hover:shadow-md transition-all"
+                    >
+                        <FaArrowLeft />
+                    </button>
+                    <div>
+                        <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900 font-display">Track Order <span className="text-orange-500">#{id.substring(0, 8).toUpperCase()}</span></h1>
+                    </div>
                 </div>
 
-                <div style={styles.infoSide}>
-                    <div style={styles.statusCard}>
-                        <span style={styles.statusLabel}>Current Status</span>
-                        <h3 style={styles.statusText}>{getStatusText(order.status)}</h3>
-                        <div style={styles.progressBar}>
-                            <div style={{
-                                ...styles.progressFill,
-                                width: order.status === 'delivered' ? '100%' :
-                                    order.status === 'in_transit' ? '80%' :
-                                        order.status === 'picked_up' ? '60%' :
-                                            order.status === 'ready' ? '40%' : '20%'
-                            }} />
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 h-[calc(100vh-200px)] min-h-[600px] animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+                    
+                    {/* Map Side */}
+                    <div className="lg:col-span-2 bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden relative">
+                        <MapView
+                            pickup={order.pickupLocation}
+                            dropoff={order.dropoffLocation}
+                        />
+                        {/* Overlay Status Badge */}
+                        <div className="absolute top-4 left-4 right-4 md:right-auto md:w-80 bg-white/90 backdrop-blur-md p-4 rounded-2xl shadow-lg border border-white/50 z-10">
+                            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">Live Status</span>
+                            <h3 className="font-bold text-gray-900 text-lg leading-tight mb-3">{getStatusText(order.status)}</h3>
+                            <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
+                                <div 
+                                    className="h-full bg-gradient-to-r from-orange-400 to-orange-500 transition-all duration-1000 ease-out"
+                                    style={{ width: getProgressWidth(order.status) }}
+                                ></div>
+                            </div>
                         </div>
                     </div>
 
-                    <div style={styles.driverCard}>
-                        <h4>Delivery Details</h4>
-                        <p><strong>Customer:</strong> {order.user?.name}</p>
-                        <p><strong>Address:</strong> {order.dropoffLocation?.address}</p>
-                        {order.dropoffLocation?.landmark && (
-                            <p><strong>Landmark:</strong> {order.dropoffLocation.landmark}</p>
-                        )}
-                        {order.dropoffLocation?.instructions && (
-                            <p><strong>Instructions:</strong> {order.dropoffLocation.instructions}</p>
-                        )}
+                    {/* Info Side */}
+                    <div className="flex flex-col gap-6 overflow-y-auto custom-scrollbar pr-2 pb-2">
+                        
+                        {/* Delivery Details Card */}
+                        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex-shrink-0">
+                            <div className="bg-gray-900 px-6 py-4 flex items-center gap-3">
+                                <FaMapMarkerAlt className="text-orange-500" />
+                                <h3 className="text-lg font-bold text-white">Delivery Details</h3>
+                            </div>
+                            <div className="p-6">
+                                <div className="space-y-4">
+                                    <div>
+                                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Customer</p>
+                                        <p className="font-medium text-gray-900">{order.user?.name || 'Guest'}</p>
+                                    </div>
+                                    <div className="border-t border-gray-100 pt-4">
+                                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Address</p>
+                                        <p className="font-medium text-gray-900">{order.dropoffLocation?.address}</p>
+                                    </div>
+                                    {order.dropoffLocation?.landmark && (
+                                        <div className="border-t border-gray-100 pt-4">
+                                            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Landmark</p>
+                                            <p className="font-medium text-gray-900">{order.dropoffLocation.landmark}</p>
+                                        </div>
+                                    )}
+                                    {order.dropoffLocation?.instructions && (
+                                        <div className="border-t border-gray-100 pt-4">
+                                            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Instructions</p>
+                                            <p className="text-sm text-gray-600 bg-orange-50 p-3 rounded-xl italic mt-1 border border-orange-100">"{order.dropoffLocation.instructions}"</p>
+                                        </div>
+                                    )}
 
-                        {deliveryPhone && (
-                            <a
-                                href={`tel:${deliveryPhone}`}
-                                style={styles.callBtn}
-                                aria-label="Call customer"
-                            >
-                                Call Customer ({deliveryPhone})
-                            </a>
-                        )}
+                                    {deliveryPhone && (
+                                        <div className="border-t border-gray-100 pt-6 mt-2">
+                                            <a
+                                                href={`tel:${deliveryPhone}`}
+                                                className="w-full bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 font-bold py-3 px-4 rounded-xl transition-colors flex items-center justify-center gap-2"
+                                                aria-label="Call customer"
+                                            >
+                                                <FaPhoneAlt /> Call Customer
+                                            </a>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Driver Card */}
                         {order.driver && (
-                            <div style={styles.driverInfo}>
-                                <div style={styles.driverAvatar}>🛵</div>
-                                <div>
-                                    <p style={{ margin: 0, fontWeight: 'bold' }}>{order.driver.name}</p>
-                                    <p style={{ margin: 0, fontSize: '0.85rem', color: '#777' }}>Your Delivery Hero</p>
+                            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex-shrink-0">
+                                <div className="p-6">
+                                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">Your Delivery Hero</h4>
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-16 h-16 rounded-full bg-orange-100 flex items-center justify-center text-3xl shadow-inner border-2 border-orange-50 text-orange-500">
+                                            <FaMotorcycle />
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-lg text-gray-900">{order.driver.name}</p>
+                                            <div className="flex items-center gap-1 mt-1">
+                                                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                                                <span className="text-xs font-bold text-green-600">On Duty</span>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         )}
+                        
+                        {/* Order Summary */}
+                        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex-shrink-0 mt-auto">
+                            <div className="p-6 bg-gray-50">
+                                <div className="flex justify-between items-center mb-2 text-sm">
+                                    <span className="text-gray-500">Items ({order.items?.length || 0})</span>
+                                    <span className="font-medium">{order.totalAmount - (order.deliveryFee || 50)} ETB</span>
+                                </div>
+                                <div className="flex justify-between items-center mb-4 text-sm">
+                                    <span className="text-gray-500">Delivery Fee</span>
+                                    <span className="font-medium">{order.deliveryFee || 50} ETB</span>
+                                </div>
+                                <div className="flex justify-between items-center pt-3 border-t border-gray-200">
+                                    <span className="font-bold text-gray-900">Total Paid</span>
+                                    <span className="font-extrabold text-orange-500 text-xl">{order.totalAmount} ETB</span>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             </div>
         </div>
     );
-};
-
-const styles = {
-    container: {
-        padding: '1rem',
-        height: 'calc(100vh - 80px)',
-        display: 'flex',
-        flexDirection: 'column',
-    },
-    header: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: '1rem',
-        marginBottom: '1rem',
-    },
-    backBtn: {
-        padding: '0.5rem 1rem',
-        borderRadius: '20px',
-        border: '1px solid #ddd',
-        background: '#fff',
-        cursor: 'pointer',
-    },
-    title: { margin: 0 },
-    grid: {
-        flex: 1,
-        display: 'grid',
-        gridTemplateColumns: '1fr 350px',
-        gap: '1rem',
-        overflow: 'hidden',
-    },
-    mapSide: {
-        borderRadius: '16px',
-        overflow: 'hidden',
-        border: '1px solid #eee',
-    },
-    infoSide: {
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '1rem',
-    },
-    statusCard: {
-        backgroundColor: '#fff',
-        padding: '1.5rem',
-        borderRadius: '16px',
-        boxShadow: '0 4px 15px rgba(0,0,0,0.05)',
-        border: '1px solid #eee',
-    },
-    statusLabel: {
-        fontSize: '0.8rem',
-        color: '#7f8c8d',
-        textTransform: 'uppercase',
-        fontWeight: 'bold',
-    },
-    statusText: {
-        margin: '0.5rem 0 1rem 0',
-        color: '#2c3e50',
-    },
-    progressBar: {
-        height: '8px',
-        backgroundColor: '#eee',
-        borderRadius: '4px',
-        overflow: 'hidden',
-    },
-    progressFill: {
-        height: '100%',
-        backgroundColor: '#e67e22',
-        transition: 'width 0.5s ease',
-    },
-    driverCard: {
-        backgroundColor: '#fff',
-        padding: '1.5rem',
-        borderRadius: '16px',
-        border: '1px solid #eee',
-        boxShadow: '0 4px 15px rgba(0,0,0,0.05)',
-    },
-    callBtn: {
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginTop: '0.75rem',
-        padding: '0.75rem 1rem',
-        borderRadius: '9999px',
-        backgroundColor: 'var(--color-primary-500)',
-        color: '#fff',
-        fontWeight: 'bold',
-        textDecoration: 'none',
-        minHeight: '44px',
-    },
-    driverInfo: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: '1rem',
-        marginTop: '1.5rem',
-        paddingTop: '1.5rem',
-        borderTop: '1px solid #eee',
-    },
-    driverAvatar: {
-        width: '50px',
-        height: '50px',
-        borderRadius: '50%',
-        backgroundColor: '#f1f8ff',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: '1.5rem',
-    },
-    loading: { textAlign: 'center', padding: '5rem' },
-    error: { textAlign: 'center', padding: '5rem', color: 'red' }
 };
 
 export default OrderTracking;

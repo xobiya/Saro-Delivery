@@ -1,8 +1,8 @@
 import { useState, useEffect, useContext } from 'react';
 import api from '../utils/api';
 import SocketContext from '../context/SocketContext';
-
 import ProductManager from '../components/ProductManager';
+import { FaBoxOpen, FaClipboardList, FaCheckCircle, FaMoneyBillWave, FaClock, FaCheck, FaTimes } from 'react-icons/fa';
 
 const VendorDashboard = () => {
     const [orders, setOrders] = useState([]);
@@ -60,231 +60,179 @@ const VendorDashboard = () => {
 
     const [orderSubTab, setOrderSubTab] = useState('active'); // 'active' or 'history'
 
+    const getStatusColor = (status) => {
+        switch (status) {
+            case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+            case 'preparing': return 'bg-blue-100 text-blue-800 border-blue-200';
+            case 'ready': return 'bg-indigo-100 text-indigo-800 border-indigo-200';
+            case 'picked_up': return 'bg-purple-100 text-purple-800 border-purple-200';
+            case 'in_transit': return 'bg-orange-100 text-orange-800 border-orange-200';
+            case 'delivered': return 'bg-green-100 text-green-800 border-green-200';
+            case 'cancelled': return 'bg-red-100 text-red-800 border-red-200';
+            default: return 'bg-gray-100 text-gray-800 border-gray-200';
+        }
+    };
+
     return (
-        <div className="container" style={{ marginTop: '2rem' }}>
-            <h2>Vendor Dashboard</h2>
-
-            <div style={styles.tabs}>
-                <button
-                    style={{ ...styles.tab, borderBottom: view === 'orders' ? '2px solid #e67e22' : 'none', color: view === 'orders' ? '#e67e22' : '#333' }}
-                    onClick={() => setView('orders')}
-                >
-                    Orders
-                </button>
-                <button
-                    style={{ ...styles.tab, borderBottom: view === 'products' ? '2px solid #e67e22' : 'none', color: view === 'products' ? '#e67e22' : '#333' }}
-                    onClick={() => setView('products')}
-                >
-                    Products
-                </button>
-            </div>
-
-            {view === 'orders' ? (
-                <div style={styles.dashboardGrid}>
-                    <div style={styles.orderSubHeader}>
-                        <div style={styles.subTabs}>
-                            <button
-                                onClick={() => setOrderSubTab('active')}
-                                style={{
-                                    ...styles.subTab,
-                                    color: orderSubTab === 'active' ? '#e67e22' : '#777',
-                                    fontWeight: orderSubTab === 'active' ? 'bold' : 'normal'
-                                }}
-                            >
-                                Active ({activeOrders.length})
-                            </button>
-                            <button
-                                onClick={() => setOrderSubTab('history')}
-                                style={{
-                                    ...styles.subTab,
-                                    color: orderSubTab === 'history' ? '#e67e22' : '#777',
-                                    fontWeight: orderSubTab === 'history' ? 'bold' : 'normal'
-                                }}
-                            >
-                                History ({historyOrders.length})
-                            </button>
-                        </div>
-                        {orderSubTab === 'history' && (
-                            <div style={styles.revenueBox}>
-                                Total Revenue: <strong>{totalRevenue} ETB</strong>
-                            </div>
-                        )}
-                    </div>
-
-                    <div style={styles.section}>
-                        {orderSubTab === 'active' ? (
-                            activeOrders.length === 0 ? <p>No active orders.</p> : (
-                                <div style={styles.list}>
-                                    {activeOrders.map(order => (
-                                        <div key={order._id} style={styles.orderCard}>
-                                            <div style={styles.header}>
-                                                <h4>Order #{order._id.substring(0, 6)}</h4>
-                                                <span style={{
-                                                    ...styles.badge,
-                                                    backgroundColor: order.status === 'pending' ? 'orange' :
-                                                        order.status === 'preparing' ? '#3498db' :
-                                                            order.status === 'ready' ? '#27ae60' : '#7f8c8d'
-                                                }}>
-                                                    {order.status}
-                                                </span>
-                                            </div>
-                                            <div style={styles.body}>
-                                                <p><strong>Customer:</strong> {order.user?.name || 'Guest'}</p>
-                                                <ul style={styles.items}>
-                                                    {order.items.map((item, idx) => (
-                                                        <li key={idx}>{item.quantity}x {item.name}</li>
-                                                    ))}
-                                                </ul>
-                                                <p className='total'><strong>Total:</strong> {order.totalAmount} ETB</p>
-                                            </div>
-                                            <div style={styles.actions}>
-                                                {(order.status === 'pending' || order.status === 'confirmed') && (
-                                                    <button onClick={() => updateStatus(order._id, 'preparing')} style={styles.acceptBtn}>Start Preparing</button>
-                                                )}
-                                                {order.status === 'preparing' && (
-                                                    <button onClick={() => updateStatus(order._id, 'ready')} style={styles.readyBtn}>Mark Ready for Pickup</button>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )
-                        ) : (
-                            historyOrders.length === 0 ? <p>No order history.</p> : (
-                                <div style={styles.list}>
-                                    {historyOrders.map(order => (
-                                        <div key={order._id} style={{ ...styles.orderCard, opacity: 0.8 }}>
-                                            <div style={styles.header}>
-                                                <h4>Order #{order._id.substring(0, 6)}</h4>
-                                                <span style={{
-                                                    ...styles.badge,
-                                                    backgroundColor: order.status === 'delivered' ? '#27ae60' : '#e74c3c'
-                                                }}>
-                                                    {order.status}
-                                                </span>
-                                            </div>
-                                            <div style={styles.body}>
-                                                <p><strong>Customer:</strong> {order.user?.name || 'Guest'}</p>
-                                                <p><strong>Completed:</strong> {new Date(order.updatedAt).toLocaleString()}</p>
-                                                <p className='total'><strong>Total:</strong> {order.totalAmount} ETB</p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )
-                        )}
+        <div className="bg-gray-50 min-h-screen pt-32 pb-20">
+            <div className="container mx-auto px-4 max-w-7xl">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 animate-fade-in-up">
+                    <div>
+                        <h2 className="text-3xl font-extrabold text-gray-900 font-display">Vendor Dashboard</h2>
+                        <p className="text-gray-500 mt-1">Manage your restaurant orders and products.</p>
                     </div>
                 </div>
-            ) : (
-                <ProductManager />
-            )}
+
+                {/* Main Tabs */}
+                <div className="flex gap-4 mb-8 border-b border-gray-200 animate-fade-in-up">
+                    <button
+                        className={`pb-4 px-4 text-lg font-bold transition-all relative ${view === 'orders' ? 'text-orange-500' : 'text-gray-500 hover:text-gray-700'}`}
+                        onClick={() => setView('orders')}
+                    >
+                        <span className="flex items-center gap-2"><FaClipboardList /> Orders</span>
+                        {view === 'orders' && <div className="absolute bottom-0 left-0 w-full h-1 bg-orange-500 rounded-t-lg"></div>}
+                    </button>
+                    <button
+                        className={`pb-4 px-4 text-lg font-bold transition-all relative ${view === 'products' ? 'text-orange-500' : 'text-gray-500 hover:text-gray-700'}`}
+                        onClick={() => setView('products')}
+                    >
+                        <span className="flex items-center gap-2"><FaBoxOpen /> Menu & Products</span>
+                        {view === 'products' && <div className="absolute bottom-0 left-0 w-full h-1 bg-orange-500 rounded-t-lg"></div>}
+                    </button>
+                </div>
+
+                {view === 'orders' ? (
+                    <div className="space-y-6 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+                        
+                        {/* Sub Tabs and Stats */}
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+                            <div className="flex bg-gray-100 p-1 rounded-xl">
+                                <button
+                                    onClick={() => setOrderSubTab('active')}
+                                    className={`px-6 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2 ${orderSubTab === 'active' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                >
+                                    <FaClock className={orderSubTab === 'active' ? 'text-orange-500' : ''} /> 
+                                    Active Orders <span className="bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full text-xs">{activeOrders.length}</span>
+                                </button>
+                                <button
+                                    onClick={() => setOrderSubTab('history')}
+                                    className={`px-6 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2 ${orderSubTab === 'history' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                >
+                                    <FaCheckCircle className={orderSubTab === 'history' ? 'text-green-500' : ''} /> 
+                                    History <span className="bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full text-xs">{historyOrders.length}</span>
+                                </button>
+                            </div>
+                            
+                            {orderSubTab === 'history' && (
+                                <div className="flex items-center gap-3 bg-green-50 px-5 py-3 rounded-xl border border-green-100">
+                                    <FaMoneyBillWave className="text-green-500 text-xl" />
+                                    <div>
+                                        <p className="text-xs font-bold text-green-800 uppercase tracking-wider">Total Revenue</p>
+                                        <p className="text-xl font-extrabold text-green-600 leading-none">{totalRevenue} ETB</p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Orders List */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {orderSubTab === 'active' ? (
+                                activeOrders.length === 0 ? (
+                                    <div className="col-span-full py-16 bg-white rounded-3xl border border-gray-100 shadow-sm text-center">
+                                        <FaClipboardList className="text-6xl text-gray-200 mx-auto mb-4" />
+                                        <h3 className="text-xl font-bold text-gray-700">No active orders right now</h3>
+                                        <p className="text-gray-500">When customers place orders, they will appear here.</p>
+                                    </div>
+                                ) : (
+                                    activeOrders.map((order, index) => (
+                                        <div key={order._id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col animate-fade-in-up" style={{ animationDelay: `${index * 0.05}s` }}>
+                                            <div className="p-5 border-b border-gray-50 flex justify-between items-start bg-gray-50/50">
+                                                <div>
+                                                    <span className="text-xs font-bold text-gray-500 uppercase">Order ID</span>
+                                                    <h4 className="font-mono font-bold text-gray-900">#{order._id.substring(0, 6).toUpperCase()}</h4>
+                                                </div>
+                                                <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${getStatusColor(order.status)}`}>
+                                                    {order.status}
+                                                </span>
+                                            </div>
+                                            
+                                            <div className="p-5 flex-1">
+                                                <p className="mb-4 text-sm text-gray-600 border-b border-gray-100 pb-4">
+                                                    <span className="font-bold text-gray-900">Customer:</span> {order.user?.name || 'Guest'}
+                                                </p>
+                                                
+                                                <div className="space-y-2 mb-4">
+                                                    {order.items.map((item, idx) => (
+                                                        <div key={idx} className="flex justify-between text-sm">
+                                                            <span className="font-medium text-gray-800"><span className="text-orange-500 font-bold">{item.quantity}x</span> {item.name}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                
+                                                <div className="pt-4 border-t border-gray-100 flex justify-between items-center mt-auto">
+                                                    <span className="font-bold text-gray-500 text-sm">Total</span>
+                                                    <span className="font-extrabold text-lg text-gray-900">{order.totalAmount} ETB</span>
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="p-4 bg-gray-50 border-t border-gray-100 gap-2 flex flex-col sm:flex-row">
+                                                {(order.status === 'pending' || order.status === 'confirmed') && (
+                                                    <button 
+                                                        onClick={() => updateStatus(order._id, 'preparing')} 
+                                                        className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2.5 px-4 rounded-xl transition-colors shadow-sm text-sm"
+                                                    >
+                                                        Start Preparing
+                                                    </button>
+                                                )}
+                                                {order.status === 'preparing' && (
+                                                    <button 
+                                                        onClick={() => updateStatus(order._id, 'ready')} 
+                                                        className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2.5 px-4 rounded-xl transition-colors shadow-sm text-sm"
+                                                    >
+                                                        Mark Ready
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))
+                                )
+                            ) : (
+                                historyOrders.length === 0 ? (
+                                    <div className="col-span-full py-16 bg-white rounded-3xl border border-gray-100 shadow-sm text-center">
+                                        <FaHistory className="text-6xl text-gray-200 mx-auto mb-4" />
+                                        <h3 className="text-xl font-bold text-gray-700">No order history</h3>
+                                    </div>
+                                ) : (
+                                    historyOrders.map((order, index) => (
+                                        <div key={order._id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col opacity-80 hover:opacity-100 transition-opacity">
+                                            <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                                                <h4 className="font-mono font-bold text-gray-600 text-sm">#{order._id.substring(0, 6).toUpperCase()}</h4>
+                                                <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border ${getStatusColor(order.status)}`}>
+                                                    {order.status}
+                                                </span>
+                                            </div>
+                                            <div className="p-4 text-sm flex-1">
+                                                <p className="mb-2"><span className="font-bold text-gray-700">Customer:</span> {order.user?.name || 'Guest'}</p>
+                                                <p className="mb-3 text-gray-500 text-xs">{new Date(order.updatedAt).toLocaleString()}</p>
+                                                <div className="pt-3 border-t border-gray-100 flex justify-between items-center mt-auto">
+                                                    <span className="font-bold text-gray-500">Total</span>
+                                                    <span className="font-bold text-gray-900">{order.totalAmount} ETB</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))
+                                )
+                            )}
+                        </div>
+                    </div>
+                ) : (
+                    <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 md:p-8 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+                        <ProductManager />
+                    </div>
+                )}
+            </div>
         </div>
     );
-};
-
-const styles = {
-    tabs: {
-        display: 'flex',
-        gap: '1rem',
-        marginBottom: '2rem',
-        borderBottom: '1px solid #ddd',
-    },
-    tab: {
-        padding: '1rem 2rem',
-        background: 'none',
-        border: 'none',
-        fontSize: '1.1rem',
-        cursor: 'pointer',
-        color: '#333',
-    },
-    dashboardGrid: {
-        display: 'grid',
-        gap: '2rem',
-    },
-    section: {
-        backgroundColor: '#fff',
-        padding: '1rem',
-        borderRadius: '8px',
-        border: '1px solid #eee'
-    },
-    list: {
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '1rem',
-    },
-    orderCard: {
-        border: '1px solid #ddd',
-        borderRadius: '8px',
-        padding: '1rem',
-        backgroundColor: '#f9f9f9',
-    },
-    header: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '0.5rem',
-    },
-    badge: {
-        padding: '0.25rem 0.5rem',
-        borderRadius: '4px',
-        color: '#fff',
-        fontSize: '0.8rem',
-        textTransform: 'uppercase',
-        fontWeight: 'bold',
-    },
-    body: {
-        fontSize: '0.9rem',
-    },
-    items: {
-        margin: '0.5rem 0',
-        paddingLeft: '1.2rem',
-    },
-    actions: {
-        marginTop: '1rem',
-        display: 'flex',
-        gap: '0.5rem',
-    },
-    acceptBtn: {
-        padding: '0.5rem 1rem',
-        backgroundColor: '#e67e22',
-        color: '#fff',
-        border: 'none',
-        borderRadius: '4px',
-        cursor: 'pointer',
-    },
-    readyBtn: {
-        padding: '0.5rem 1rem',
-        backgroundColor: '#27ae60',
-        color: '#fff',
-        border: 'none',
-        borderRadius: '4px',
-        cursor: 'pointer',
-    },
-    orderSubHeader: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '1rem',
-        backgroundColor: '#fff',
-        padding: '1rem',
-        borderRadius: '8px',
-        border: '1px solid #eee',
-    },
-    subTabs: {
-        display: 'flex',
-        gap: '1.5rem',
-    },
-    subTab: {
-        background: 'none',
-        border: 'none',
-        cursor: 'pointer',
-        fontSize: '1rem',
-        padding: '0.25rem 0',
-    },
-    revenueBox: {
-        fontSize: '1rem',
-        color: '#2c3e50',
-    }
 };
 
 export default VendorDashboard;

@@ -1,6 +1,6 @@
 import { useState, useEffect, useContext, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FaArrowLeft, FaStar, FaClock, FaMapMarkerAlt, FaShoppingCart, FaFilter } from 'react-icons/fa';
+import { FaArrowLeft, FaStar, FaClock, FaMapMarkerAlt, FaShoppingCart, FaFilter, FaPlus } from 'react-icons/fa';
 import api from '../utils/api';
 import CartContext from '../context/CartContext';
 import { useLocale } from '../context/LocaleContext.jsx';
@@ -52,80 +52,117 @@ const VendorMenu = () => {
 
     if (loading) {
         return (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', backgroundColor: 'var(--bg-secondary)' }}>
-                <div style={{ width: '50px', height: '50px', border: '4px solid #f3f3f3', borderTop: '4px solid var(--color-primary-500)', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+            <div className="flex justify-center items-center min-h-screen bg-gray-50 pt-20">
+                <div className="w-16 h-16 border-4 border-gray-200 border-t-orange-500 rounded-full animate-spin shadow-lg"></div>
             </div>
         );
     }
 
-    if (!vendor) return <div style={{ textAlign: 'center', padding: 'var(--space-16)' }}>Vendor not found</div>;
+    if (!vendor) return (
+        <div className="flex flex-col justify-center items-center min-h-screen bg-gray-50 pt-20 text-center">
+            <h2 className="text-3xl font-bold text-gray-800 mb-4">Vendor not found</h2>
+            <button onClick={() => navigate('/vendors')} className="text-orange-500 font-semibold hover:underline">Go back to vendors</button>
+        </div>
+    );
 
     const bannerUrl = resolveVendorBannerUrl(vendor, vendorFallbackImage);
 
     return (
-        <div style={{ backgroundColor: 'var(--bg-secondary)', minHeight: '100vh' }}>
+        <div className="bg-gray-50 min-h-screen pb-20">
             {/* Hero Header */}
-            <div style={styles.header}>
-                <div style={styles.headerOverlay}>
-                    <div style={styles.headerContent}>
-                        <button onClick={() => navigate('/vendors')} style={styles.backBtn} className="back-btn">
-                            <FaArrowLeft /> Back to Vendors
-                        </button>
-                        <div style={styles.vendorInfo}>
-                            <h1 style={styles.vendorTitle}>{vendor.businessName}</h1>
-                            <p style={styles.vendorDescription}>{vendor.description}</p>
-                            <div style={styles.vendorMeta}>
-                                <div style={styles.metaItem}>
-                                    <FaClock style={styles.metaIcon} />
-                                    <span>25-35 min</span>
-                                </div>
-                                <div style={styles.metaItem}>
-                                    <FaMapMarkerAlt style={styles.metaIcon} />
-                                    <span>Arba Minch</span>
-                                </div>
-                                {vendor.rating && (
-                                    <div style={styles.metaItem}>
-                                        <FaStar style={styles.metaIcon} />
-                                        <span>{vendor.rating}</span>
+            <div className="relative h-[400px] overflow-hidden">
+                <div 
+                    className="absolute inset-0 bg-cover bg-center transform hover:scale-105 transition-transform duration-1000" 
+                    style={{ backgroundImage: `url("${bannerUrl}")` }}
+                ></div>
+                <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/60 to-black/40 flex flex-col justify-end">
+                    <div className="container mx-auto px-4 max-w-6xl pb-10">
+                        {/* Top Actions */}
+                        <div className="absolute top-24 left-4 right-4 container mx-auto max-w-6xl flex justify-between items-center z-10">
+                            <button 
+                                onClick={() => navigate('/vendors')} 
+                                className="flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-md text-white px-5 py-2.5 rounded-full border border-white/30 transition-all font-medium text-sm shadow-lg"
+                            >
+                                <FaArrowLeft /> Back
+                            </button>
+                            <button
+                                onClick={() => navigate('/checkout')}
+                                className="relative flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-6 py-2.5 rounded-full shadow-lg hover:shadow-orange-500/50 transition-all font-medium"
+                            >
+                                <FaShoppingCart />
+                                <span className="hidden sm:inline">View Cart</span>
+                                {cartItemCount > 0 && (
+                                    <span className="absolute -top-2 -right-2 bg-white text-orange-600 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-md">
+                                        {cartItemCount}
+                                    </span>
+                                )}
+                            </button>
+                        </div>
+
+                        {/* Vendor Info */}
+                        <div className="animate-fade-in-up">
+                            <div className="flex flex-wrap items-end justify-between gap-6">
+                                <div className="text-white">
+                                    <div className="flex items-center gap-4 mb-3">
+                                        <h1 className="text-4xl md:text-5xl font-extrabold font-display drop-shadow-lg">{vendor.businessName}</h1>
+                                        {vendor.isOpen ? (
+                                            <span className="bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md">OPEN NOW</span>
+                                        ) : (
+                                            <span className="bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md">CLOSED</span>
+                                        )}
                                     </div>
+                                    <p className="text-lg md:text-xl text-gray-200 mb-6 max-w-2xl drop-shadow-md">
+                                        {vendor.description || 'Experience the best flavors prepared with love and fresh ingredients.'}
+                                    </p>
+                                    
+                                    <div className="flex flex-wrap items-center gap-6">
+                                        <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-xl text-sm font-medium border border-white/10">
+                                            <FaClock className="text-orange-400 text-lg" />
+                                            <span>25-35 min delivery</span>
+                                        </div>
+                                        <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-xl text-sm font-medium border border-white/10">
+                                            <FaMapMarkerAlt className="text-red-400 text-lg" />
+                                            <span>Arba Minch</span>
+                                        </div>
+                                        {vendor.rating && (
+                                            <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-xl text-sm font-medium border border-white/10">
+                                                <FaStar className="text-yellow-400 text-lg" />
+                                                <span>{vendor.rating} Rating</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                                {vendor.logoUrl && (
+                                    <img src={vendor.logoUrl} alt="logo" className="hidden md:block w-32 h-32 rounded-2xl object-cover border-4 border-white shadow-2xl bg-white" />
                                 )}
                             </div>
                         </div>
-                        <div style={styles.headerActions}>
-                            <button
-                                onClick={() => navigate('/checkout')}
-                                style={styles.cartBtn}
-                                className="btn btn-outline"
-                            >
-                                <FaShoppingCart />
-                                {cartItemCount > 0 && <span style={styles.cartBadge}>{cartItemCount}</span>}
-                            </button>
-                        </div>
                     </div>
                 </div>
-                <div style={{ ...styles.headerImage, backgroundImage: `url("${bannerUrl}")` }}></div>
             </div>
 
-            {/* Content */}
-            <div style={styles.container}>
+            {/* Content Container */}
+            <div className="container mx-auto px-4 max-w-6xl mt-8">
+                
                 {/* Category Filter */}
                 {categories.length > 1 && (
-                    <div style={styles.filterSection}>
-                        <div style={styles.filterHeader}>
-                            <FaFilter style={styles.filterIcon} />
-                            <h3 style={styles.filterTitle}>Categories</h3>
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-10 sticky top-[80px] z-40 animate-fade-in-up">
+                        <div className="flex items-center gap-3 mb-4">
+                            <FaFilter className="text-orange-500 text-lg" />
+                            <h3 className="text-xl font-bold text-gray-900">Menu Categories</h3>
                         </div>
-                        <div style={styles.filterButtons}>
+                        <div className="flex flex-wrap gap-3">
                             {categories.map(cat => (
                                 <button
                                     key={cat}
                                     onClick={() => setSelectedCategory(cat)}
-                                    style={{
-                                        ...styles.filterBtn,
-                                        ...(selectedCategory === cat ? styles.filterBtnActive : {})
-                                    }}
+                                    className={`px-5 py-2.5 rounded-full text-sm font-semibold transition-all ${
+                                        selectedCategory === cat 
+                                            ? 'bg-gray-900 text-white shadow-md' 
+                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900'
+                                    }`}
                                 >
-                                    {cat === 'all' ? 'All Items' : cat}
+                                    {cat === 'all' ? '🍽️ All Items' : cat}
                                 </button>
                             ))}
                         </div>
@@ -133,40 +170,45 @@ const VendorMenu = () => {
                 )}
 
                 {/* Products Grid */}
-                <div style={styles.grid}>
-                    {filteredProducts.map((product) => (
-                        <div key={product._id} style={styles.productCard} className="product-card">
-                            <div style={styles.productImageContainer}>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {filteredProducts.map((product, index) => (
+                        <div key={product._id} className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 overflow-hidden flex flex-col animate-fade-in-up group" style={{ animationDelay: `${index * 0.05}s` }}>
+                            <div className="relative h-48 w-full overflow-hidden bg-gray-100">
                                 {product.imageUrl ? (
                                     <img
                                         src={product.imageUrl}
                                         alt={product.name}
-                                        style={styles.productImage}
-                                        className="product-image"
+                                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                                         loading="lazy"
                                         decoding="async"
                                     />
                                 ) : (
-                                    <div style={styles.productPlaceholder}>
-                                        <span>No Image</span>
+                                    <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                        <FaUtensils className="text-4xl opacity-20" />
                                     </div>
                                 )}
-                            </div>
-                            <div style={styles.productContent}>
-                                <div style={styles.productHeader}>
-                                    <h3 style={styles.productName}>{product.name}</h3>
-                                    <span style={styles.productPrice}>{product.price} ETB</span>
-                                </div>
-                                <p style={styles.productDescription}>{product.description}</p>
                                 {product.category && (
-                                    <span style={styles.productCategory}>{product.category}</span>
+                                    <span className="absolute top-4 left-4 bg-black/60 backdrop-blur-sm text-white text-xs font-bold px-3 py-1 rounded-full shadow-md">
+                                        {product.category}
+                                    </span>
                                 )}
+                                <div className="absolute top-4 right-4 bg-white text-gray-900 font-extrabold px-3 py-1.5 rounded-full shadow-lg text-sm">
+                                    {product.price} ETB
+                                </div>
+                            </div>
+                            <div className="p-6 flex flex-col flex-grow">
+                                <h3 className="font-bold text-xl text-gray-900 mb-2">{product.name}</h3>
+                                <p className="text-gray-500 text-sm mb-6 line-clamp-2 min-h-[40px] flex-grow">
+                                    {product.description || 'Delicious freshly prepared item.'}
+                                </p>
+                                
                                 <button
                                     onClick={() => addToCart(product, vendor._id)}
-                                    style={styles.addToCartBtn}
-                                    className="btn btn-primary"
+                                    className="w-full bg-orange-50 hover:bg-orange-500 text-orange-600 hover:text-white border border-orange-200 hover:border-orange-500 font-bold py-3 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 group-hover:shadow-md"
+                                    disabled={!vendor.isOpen}
                                 >
-                                    Add to Cart
+                                    <FaPlus className={!vendor.isOpen ? 'opacity-50' : ''} /> 
+                                    {vendor.isOpen ? 'Add to Order' : 'Currently Closed'}
                                 </button>
                             </div>
                         </div>
@@ -174,258 +216,15 @@ const VendorMenu = () => {
                 </div>
 
                 {filteredProducts.length === 0 && (
-                    <div style={styles.emptyState}>
-                        <FaFilter style={{ fontSize: '64px', color: '#ccc', marginBottom: '1rem' }} />
-                        <h3>No items found</h3>
-                        <p>Try selecting a different category</p>
+                    <div className="text-center py-20 bg-white rounded-3xl shadow-sm border border-gray-100 mt-8">
+                        <FaFilter className="text-6xl text-gray-300 mx-auto mb-4" />
+                        <h3 className="text-2xl font-bold text-gray-800 mb-2">No items found</h3>
+                        <p className="text-gray-500">We couldn't find any items in this category.</p>
                     </div>
                 )}
             </div>
         </div>
     );
-};
-
-const styles = {
-    header: {
-        position: 'relative',
-        height: '300px',
-        overflow: 'hidden',
-    },
-    headerImage: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-    },
-    headerOverlay: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: 'linear-gradient(135deg, rgba(0,0,0,0.7), rgba(0,0,0,0.5))',
-        display: 'flex',
-        alignItems: 'center',
-    },
-    headerContent: {
-        width: '100%',
-        maxWidth: '1200px',
-        margin: '0 auto',
-        padding: '0 var(--space-4)',
-        color: 'var(--text-inverse)',
-    },
-    backBtn: {
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 'var(--space-2)',
-        background: 'rgba(255,255,255,0.15)',
-        border: '1px solid rgba(255,255,255,0.2)',
-        color: 'var(--text-inverse)',
-        padding: 'var(--space-2) var(--space-4)',
-        borderRadius: 'var(--radius-full)',
-        cursor: 'pointer',
-        fontSize: 'var(--font-size-sm)',
-        fontWeight: 'var(--font-weight-medium)',
-        backdropFilter: 'blur(10px)',
-        transition: 'all var(--transition-fast)',
-        marginBottom: 'var(--space-6)',
-    },
-    vendorInfo: {
-        marginBottom: 'var(--space-6)',
-    },
-    vendorTitle: {
-        fontSize: 'var(--font-size-4xl)',
-        fontWeight: 'var(--font-weight-bold)',
-        marginBottom: 'var(--space-2)',
-        background: 'linear-gradient(135deg, #ffffff, #f5f5f5)',
-        backgroundClip: 'text',
-        WebkitBackgroundClip: 'text',
-        WebkitTextFillColor: 'transparent',
-    },
-    vendorDescription: {
-        fontSize: 'var(--font-size-lg)',
-        opacity: 0.9,
-        marginBottom: 'var(--space-4)',
-    },
-    vendorMeta: {
-        display: 'flex',
-        gap: 'var(--space-6)',
-        flexWrap: 'wrap',
-    },
-    metaItem: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: 'var(--space-2)',
-        fontSize: 'var(--font-size-sm)',
-        opacity: 0.9,
-    },
-    metaIcon: {
-        fontSize: 'var(--font-size-base)',
-        color: 'var(--color-primary-400)',
-    },
-    headerActions: {
-        display: 'flex',
-        justifyContent: 'flex-end',
-    },
-    cartBtn: {
-        position: 'relative',
-        padding: 'var(--space-3)',
-        borderRadius: 'var(--radius-full)',
-        backgroundColor: 'rgba(255,255,255,0.15)',
-        border: '1px solid rgba(255,255,255,0.2)',
-        color: 'var(--text-inverse)',
-        cursor: 'pointer',
-        backdropFilter: 'blur(10px)',
-    },
-    cartBadge: {
-        position: 'absolute',
-        top: '-8px',
-        right: '-8px',
-        backgroundColor: 'var(--color-secondary-500)',
-        color: 'var(--text-inverse)',
-        borderRadius: 'var(--radius-full)',
-        padding: '2px 6px',
-        fontSize: 'var(--font-size-xs)',
-        fontWeight: 'var(--font-weight-bold)',
-        minWidth: '20px',
-        textAlign: 'center',
-    },
-    container: {
-        maxWidth: '1200px',
-        margin: '0 auto',
-        padding: 'var(--space-8) var(--space-4)',
-    },
-    filterSection: {
-        marginBottom: 'var(--space-8)',
-        padding: 'var(--space-6)',
-        backgroundColor: 'var(--bg-primary)',
-        borderRadius: 'var(--radius-xl)',
-        boxShadow: 'var(--shadow-sm)',
-        border: '1px solid var(--color-neutral-200)',
-    },
-    filterHeader: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: 'var(--space-3)',
-        marginBottom: 'var(--space-4)',
-    },
-    filterIcon: {
-        color: 'var(--color-primary-500)',
-        fontSize: 'var(--font-size-lg)',
-    },
-    filterTitle: {
-        fontSize: 'var(--font-size-xl)',
-        fontWeight: 'var(--font-weight-semibold)',
-        color: 'var(--text-primary)',
-        margin: 0,
-    },
-    filterButtons: {
-        display: 'flex',
-        gap: 'var(--space-3)',
-        flexWrap: 'wrap',
-    },
-    filterBtn: {
-        padding: 'var(--space-2) var(--space-4)',
-        border: '1px solid var(--color-neutral-300)',
-        borderRadius: 'var(--radius-full)',
-        backgroundColor: 'var(--bg-primary)',
-        color: 'var(--text-secondary)',
-        cursor: 'pointer',
-        fontSize: 'var(--font-size-sm)',
-        fontWeight: 'var(--font-weight-medium)',
-        transition: 'all var(--transition-fast)',
-    },
-    filterBtnActive: {
-        backgroundColor: 'var(--color-primary-500)',
-        color: 'var(--text-inverse)',
-        borderColor: 'var(--color-primary-500)',
-    },
-    grid: {
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-        gap: 'var(--space-6)',
-    },
-    productCard: {
-        backgroundColor: 'var(--bg-primary)',
-        borderRadius: 'var(--radius-xl)',
-        overflow: 'hidden',
-        boxShadow: 'var(--shadow-sm)',
-        border: '1px solid var(--color-neutral-200)',
-        transition: 'all var(--transition-fast)',
-    },
-    productImageContainer: {
-        height: '200px',
-        overflow: 'hidden',
-        position: 'relative',
-    },
-    productImage: {
-        width: '100%',
-        height: '100%',
-        objectFit: 'cover',
-        transition: 'transform var(--transition-fast)',
-    },
-    productPlaceholder: {
-        width: '100%',
-        height: '100%',
-        backgroundColor: 'var(--color-neutral-100)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: 'var(--text-secondary)',
-        fontSize: 'var(--font-size-sm)',
-    },
-    productContent: {
-        padding: 'var(--space-5)',
-    },
-    productHeader: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        marginBottom: 'var(--space-3)',
-    },
-    productName: {
-        fontSize: 'var(--font-size-lg)',
-        fontWeight: 'var(--font-weight-semibold)',
-        color: 'var(--text-primary)',
-        margin: 0,
-        flex: 1,
-    },
-    productPrice: {
-        fontSize: 'var(--font-size-lg)',
-        fontWeight: 'var(--font-weight-bold)',
-        color: 'var(--color-primary-600)',
-    },
-    productDescription: {
-        color: 'var(--text-secondary)',
-        fontSize: 'var(--font-size-sm)',
-        lineHeight: 'var(--line-height-relaxed)',
-        marginBottom: 'var(--space-3)',
-    },
-    productCategory: {
-        display: 'inline-block',
-        backgroundColor: 'var(--color-secondary-100)',
-        color: 'var(--color-secondary-700)',
-        padding: 'var(--space-1) var(--space-3)',
-        borderRadius: 'var(--radius-full)',
-        fontSize: 'var(--font-size-xs)',
-        fontWeight: 'var(--font-weight-medium)',
-        marginBottom: 'var(--space-4)',
-    },
-    addToCartBtn: {
-        width: '100%',
-        padding: 'var(--space-3)',
-        fontSize: 'var(--font-size-base)',
-        fontWeight: 'var(--font-weight-medium)',
-    },
-    emptyState: {
-        textAlign: 'center',
-        padding: 'var(--space-16)',
-        color: 'var(--text-secondary)',
-        gridColumn: '1 / -1',
-    },
 };
 
 export default VendorMenu;
