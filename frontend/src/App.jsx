@@ -19,6 +19,8 @@ import VendorList from './pages/VendorList';
 import Checkout from './pages/Checkout';
 import OAuthCallback from './pages/OAuthCallback';
 import Profile from './pages/Profile';
+import Footer from './components/Footer';
+import ScrollToTop from './components/ScrollToTop';
 
 function App() {
     return (
@@ -28,63 +30,68 @@ function App() {
                     <CartProvider>
                         <ToastProvider>
                             <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+                                <ScrollToTop />
                                 <Navbar />
-                                <Routes>
-                                    <Route path="/" element={<Home />} />
-                                    <Route path="/vendors" element={<VendorList />} />
-                                    <Route path="/about" element={<About />} />
-                                    <Route path="/contact" element={<Contact />} />
-                                    <Route path="/login" element={<Login />} />
-                                    <Route path="/register" element={<Register />} />
-                                    <Route path="/oauth/callback" element={<OAuthCallback />} />
+                                <main style={{ minHeight: '70vh' }}>
+                                    <Routes>
+                                        <Route path="/" element={<Home />} />
+                                        <Route path="/vendors" element={<VendorList />} />
+                                        <Route path="/about" element={<About />} />
+                                        <Route path="/contact" element={<Contact />} />
+                                        <Route path="/login" element={<Login />} />
+                                        <Route path="/register" element={<Register />} />
+                                        <Route path="/oauth/callback" element={<OAuthCallback />} />
 
-                                    <Route
-                                        path="/checkout"
-                                        element={
-                                            <ProtectedRoute allowedRoles={['customer', 'admin']}>
-                                                <Checkout />
-                                            </ProtectedRoute>
-                                        }
-                                    />
+                                        <Route
+                                            path="/checkout"
+                                            element={
+                                                <ProtectedRoute allowedRoles={['customer', 'admin']}>
+                                                    <Checkout />
+                                                </ProtectedRoute>
+                                            }
+                                        />
 
-                                    <Route
-                                        path="/profile"
-                                        element={
-                                            <ProtectedRoute allowedRoles={['customer', 'admin', 'driver', 'vendor', 'restaurant']}>
-                                                <Profile />
-                                            </ProtectedRoute>
-                                        }
-                                    />
+                                        <Route
+                                            path="/profile"
+                                            element={
+                                                <ProtectedRoute allowedRoles={['customer', 'admin', 'driver', 'vendor', 'restaurant']}>
+                                                    <Profile />
+                                                </ProtectedRoute>
+                                            }
+                                        />
 
-                                    <Route
-                                        path="/driver/dashboard"
-                                        element={
-                                            <ProtectedRoute allowedRoles={['driver', 'admin']}>
-                                                <DriverDashboard />
-                                            </ProtectedRoute>
-                                        }
-                                    />
+                                        <Route
+                                            path="/driver/dashboard"
+                                            element={
+                                                <ProtectedRoute allowedRoles={['driver', 'admin']}>
+                                                    <DriverDashboard />
+                                                </ProtectedRoute>
+                                            }
+                                        />
 
-                                    <Route
-                                        path="/vendor-dashboard"
-                                        element={
-                                            <ProtectedRoute allowedRoles={['vendor', 'admin']}>
-                                                <VendorDashboard />
-                                            </ProtectedRoute>
-                                        }
-                                    />
+                                        <Route
+                                            path="/vendor-dashboard"
+                                            element={
+                                                <ProtectedRoute allowedRoles={['vendor', 'admin']}>
+                                                    <VendorDashboard />
+                                                </ProtectedRoute>
+                                            }
+                                        />
 
-                                    <Route
-                                        path="/track/:id"
-                                        element={
-                                            <ProtectedRoute allowedRoles={['customer', 'driver', 'admin']}>
-                                                <OrderTracking />
-                                            </ProtectedRoute>
-                                        }
-                                    />
+                                        <Route
+                                            path="/track/:id"
+                                            element={
+                                                <ProtectedRoute allowedRoles={['customer', 'driver', 'admin']}>
+                                                    <OrderTracking />
+                                                </ProtectedRoute>
+                                            }
+                                        />
 
-                                    <Route path="/menu/:id" element={<VendorMenu />} />
-                                </Routes>
+                                        <Route path="/menu/:id" element={<VendorMenu />} />
+                                    </Routes>
+                                </main>
+                                <Footer />
+
                             </Router>
                         </ToastProvider>
                     </CartProvider>

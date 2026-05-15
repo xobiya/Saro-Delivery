@@ -1,3 +1,4 @@
+// Force restart Vite after clearing cache
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 

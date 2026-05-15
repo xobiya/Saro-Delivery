@@ -9,67 +9,57 @@ import {
     FaStar,
     FaClock,
     FaMapMarkerAlt,
-    FaArrowRight
+    FaArrowRight,
+    FaApple,
+    FaGooglePlay,
+    FaSearch,
+    FaBiking
 } from 'react-icons/fa';
 
 import heroImage from '../Assets/vertical-shot-delicious-ethiopian-food-with-fresh-vegetables-wooden-table.jpg';
 import vendorFallbackImage from '../Assets/meat-vegetable-ethiopian-salads.jpg';
 import { resolveVendorBannerUrl } from '../utils/vendorImages';
 
+import demoImage1 from '../Assets/top-view-indian-food-assortment.jpg';
+import demoImage2 from '../Assets/fried-chicken-with-grilled-potatoes-eggplants-tomatoes-peppers.jpg';
+import demoImage3 from '../Assets/meat-vegetable-ethiopian-salads.jpg';
+
 const Home = () => {
-    const [vendors, setVendors] = useState([]);
+    const [vendors, setVendors] = useState([
+        {
+            _id: 'demo1',
+            businessName: 'Lalibela Traditional Restaurant',
+            categories: ['Restaurant', 'Ethiopian'],
+            rating: 4.8,
+            isOpen: true,
+            bannerUrl: demoImage3
+        },
+        {
+            _id: 'demo2',
+            businessName: 'Arba Minch Fast Food',
+            categories: ['Restaurant', 'Fast Food'],
+            rating: 4.5,
+            isOpen: true,
+            bannerUrl: demoImage1
+        },
+        {
+            _id: 'demo3',
+            businessName: 'Omo Valley Cafe',
+            categories: ['Cafe', 'Breakfast'],
+            rating: 4.9,
+            isOpen: false,
+            bannerUrl: demoImage2
+        }
+    ]);
     const [loading, setLoading] = useState(true);
-
-        useEffect(() => {
-                // Avoid touching document.styleSheets/cssRules (can throw SecurityError for cross-origin sheets).
-                // Inject Home-specific CSS safely via a <style> tag.
-                const STYLE_ID = 'saro-home-dynamic-css';
-                if (typeof document === 'undefined') return;
-                if (document.getElementById(STYLE_ID)) return;
-
-                const styleEl = document.createElement('style');
-                styleEl.id = STYLE_ID;
-                styleEl.textContent = `
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-.saro-home-card:hover {
-    transform: translateY(-10px);
-    box-shadow: 0 20px 40px rgba(0,0,0,0.15);
-}
-.saro-home-card:hover .saro-home-cardImage {
-    transform: scale(1.05);
-}
-.saro-home-card:hover .saro-home-viewMenu {
-    color: #d35400;
-}
-.saro-home-primaryButton:hover, .saro-home-ctaButtonPrimary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(230, 126, 34, 0.6);
-}
-.saro-home-secondaryButton:hover, .saro-home-seeAllButton:hover, .saro-home-ctaButtonSecondary:hover {
-    background-color: rgba(255,255,255,0.1);
-    transform: translateY(-2px);
-}
-.saro-home-feature:hover {
-    transform: translateY(-5px);
-}
-`;
-
-                document.head.appendChild(styleEl);
-
-                return () => {
-                        styleEl.remove();
-                };
-        }, []);
 
     useEffect(() => {
         const fetchVendors = async () => {
             try {
                 const { data } = await api.getCached('/vendors', { ttlMs: 5 * 60 * 1000 });
-                setVendors(data);
+                if (data && data.length > 0) {
+                    setVendors(data);
+                }
             } catch (error) {
                 console.error('Error fetching vendors:', error);
             } finally {
@@ -86,598 +76,195 @@ const Home = () => {
     ));
     const hotels = vendors.filter(v => v.categories.some(c => c.toLowerCase().includes('hotel')));
 
-    const featuredRestaurants = restaurants.length > 0 ? restaurants.slice(0, 4) : vendors.slice(0, 4);
-    const featuredHotels = hotels.length > 0 ? hotels.slice(0, 4) : vendors.slice(4, 8);
+    const featuredRestaurants = restaurants.length > 0 ? restaurants.slice(0, 3) : vendors.slice(0, 3);
+    const featuredHotels = hotels.length > 0 ? hotels.slice(0, 3) : vendors.slice(4, 7);
 
-    if (loading) {
+    if (loading && vendors.length === 0) {
         return (
-            <div style={styles.loadingContainer}>
-                <div style={styles.spinner}></div>
-                <p>Loading delicious options...</p>
+            <div className="flex flex-col items-center justify-center" style={{ minHeight: '80vh' }}>
+                <div className="skeleton" style={{ width: '60px', height: '60px', borderRadius: '50%' }}></div>
+                <p className="mt-4 text-secondary">Discovering delicious options...</p>
             </div>
         );
     }
 
     return (
-        <div style={styles.container}>
-            {/* Enhanced Hero Section */}
-            <section style={styles.hero}>
-                <div style={styles.heroContent}>
-                    <div style={styles.heroText}>
-                        <h1 style={styles.heroTitle}>
-                            Taste the Best of <span style={styles.highlight}>Arba Minch</span>
-                        </h1>
-                        <p style={styles.heroSubtitle}>
-                            Discover amazing restaurants and hotels with fast delivery right to your doorstep.
-                            Fresh food, quick service, and unforgettable flavors.
-                        </p>
-                        <div style={styles.heroButtons}>
-                            <Link to="/vendors" style={styles.primaryButton} className="saro-home-primaryButton">
-                                Order Now <FaArrowRight style={{ marginLeft: '8px' }} />
-                            </Link>
-                            <Link to="/about" style={styles.secondaryButton} className="saro-home-secondaryButton">
-                                How It Works
-                            </Link>
-                        </div>
-                        <div style={styles.heroStats}>
-                            <div style={styles.stat}>
-                                <FaUtensils style={styles.statIcon} />
-                                <div>
-                                    <h3>{restaurants.length}+</h3>
-                                    <p>Restaurants</p>
-                                </div>
-                            </div>
-                            <div style={styles.stat}>
-                                <FaHotel style={styles.statIcon} />
-                                <div>
-                                    <h3>{hotels.length}+</h3>
-                                    <p>Hotels</p>
-                                </div>
-                            </div>
-                            <div style={styles.stat}>
-                                <FaShippingFast style={styles.statIcon} />
-                                <div>
-                                    <h3>30min</h3>
-                                    <p>Avg. Delivery</p>
-                                </div>
+        <div className="home-container bg-gray-50">
+            {/* Premium Hero Section */}
+            <section className="relative min-h-[90vh] flex items-center bg-gradient-to-br from-gray-900 to-black text-white py-20 overflow-hidden">
+                <div className="container mx-auto px-4 relative z-10">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-8 items-center">
+                        <div className="animate-fade-in-up text-center lg:text-left">
+                            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold mb-6 leading-tight font-display tracking-tight text-white">
+                                Taste the Best of <br />
+                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-500 drop-shadow-sm">Arba Minch</span>
+                            </h1>
+                            <p className="text-lg md:text-xl text-gray-300 mb-10 max-w-2xl mx-auto lg:mx-0 text-white">
+                                Discover amazing restaurants and hotels with fast delivery right to your doorstep.
+                                Fresh food, quick service, and unforgettable flavors.
+                            </p>
+                            <div className="flex flex-col sm:flex-row justify-center lg:justify-start gap-4 mb-10">
+                                <Link to="/vendors" className="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-4 px-8 rounded-xl shadow-lg hover:shadow-orange-500/50 transition-all duration-300 flex items-center justify-center transform hover:-translate-y-1 animate-pulse-glow">
+                                    Order Now <FaArrowRight className="ml-2" />
+                                </Link>
+                                <a href="#how-it-works" className="bg-transparent border-2 border-white/30 hover:border-white hover:bg-white/10 text-white font-semibold py-4 px-8 rounded-xl transition-all duration-300 flex items-center justify-center transform hover:-translate-y-1">
+                                    How It Works
+                                </a>
                             </div>
                         </div>
-                    </div>
-                    <div style={styles.heroImage}>
-                        <img
-                            src={heroImage}
-                            alt="Ethiopian food"
-                            style={styles.foodImage}
-                            loading="lazy"
-                            decoding="async"
-                        />
+                        <div className="relative flex justify-center items-center animate-fade-in stagger-2 mt-10 lg:mt-0">
+                            {/* Inclined Image with 3D effect */}
+                            <div className="relative z-10 transform -rotate-6 hover:-rotate-3 transition-transform duration-500 perspective-1000">
+                                <img
+                                    src={heroImage}
+                                    alt="Ethiopian food"
+                                    className="w-full max-w-[450px] rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-4 border-white/10"
+                                />
+                            </div>
+                            
+                            {/* Floating Elements */}
+                            <div className="absolute top-[5%] -right-[2%] lg:-right-[5%] bg-white/10 backdrop-blur-md border border-white/20 text-white p-4 rounded-xl shadow-xl z-20 flex items-center gap-3 animate-float">
+                                <div className="w-3 h-3 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.8)]"></div>
+                                <span className="font-medium text-sm">30 min delivery</span>
+                            </div>
+                            <div className="absolute bottom-[10%] -left-[2%] lg:-left-[5%] bg-white/10 backdrop-blur-md border border-white/20 text-white p-4 rounded-xl shadow-xl z-20 flex items-center gap-3 animate-float" style={{ animationDelay: '1.5s' }}>
+                                <FaStar className="text-yellow-400 text-xl drop-shadow-md" />
+                                <span className="font-medium text-sm">4.9 Rated Service</span>
+                            </div>
+                            
+                            {/* Decorative Background Blob */}
+                            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-orange-500/20 rounded-full blur-[100px] -z-10"></div>
+                        </div>
                     </div>
                 </div>
             </section>
 
-            {/* Featured Restaurants Section */}
-            <section style={styles.section}>
-                <div style={styles.sectionHeader}>
-                    <div style={styles.sectionTitleContainer}>
-                        <FaUtensils style={styles.sectionIcon} />
-                        <h2 style={styles.sectionTitle}>Popular Restaurants</h2>
+            {/* How It Works Section */}
+            <section id="how-it-works" className="py-20 bg-white">
+                <div className="container mx-auto px-4">
+                    <div className="text-center mb-16">
+                        <h2 className="text-3xl md:text-4xl font-bold mb-4 font-display text-gray-900">How It Works</h2>
+                        <p className="text-gray-500 max-w-2xl mx-auto">Simple steps to get your favorite meal delivered</p>
                     </div>
-                    <p style={styles.sectionSubtitle}>Curated selection of the best dining spots in town</p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+                        <div className="p-8 rounded-2xl bg-gray-50 border border-gray-100 shadow-sm hover:shadow-md transition-shadow animate-fade-in-up">
+                            <div className="w-16 h-16 mx-auto bg-orange-100 text-orange-500 rounded-full flex items-center justify-center text-2xl mb-6 shadow-inner"><FaSearch /></div>
+                            <h3 className="text-xl font-bold mb-3 text-gray-900">Find Food</h3>
+                            <p className="text-gray-500">Browse from our list of top-rated restaurants and hotels in Arba Minch.</p>
+                        </div>
+                        <div className="p-8 rounded-2xl bg-gray-50 border border-gray-100 shadow-sm hover:shadow-md transition-shadow animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+                            <div className="w-16 h-16 mx-auto bg-orange-100 text-orange-500 rounded-full flex items-center justify-center text-2xl mb-6 shadow-inner"><FaUtensils /></div>
+                            <h3 className="text-xl font-bold mb-3 text-gray-900">Order</h3>
+                            <p className="text-gray-500">Choose your favorite dishes and pay securely via Chapa or Cash on Delivery.</p>
+                        </div>
+                        <div className="p-8 rounded-2xl bg-gray-50 border border-gray-100 shadow-sm hover:shadow-md transition-shadow animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
+                            <div className="w-16 h-16 mx-auto bg-orange-100 text-orange-500 rounded-full flex items-center justify-center text-2xl mb-6 shadow-inner"><FaBiking /></div>
+                            <h3 className="text-xl font-bold mb-3 text-gray-900">Enjoy</h3>
+                            <p className="text-gray-500">Sit back and relax. Our delivery partner will be at your door in no time.</p>
+                        </div>
+                    </div>
                 </div>
+            </section>
 
-                <div style={styles.grid}>
-                    {featuredRestaurants.map(vendor => (
-                        <div style={styles.card} className="saro-home-card" key={vendor._id}>
-                            <Link to={`/menu/${vendor._id}`} style={styles.cardLink}>
-                                <div style={styles.cardImageContainer}>
-                                    <img
-                                        src={resolveVendorBannerUrl(vendor, vendorFallbackImage)}
-                                        alt={vendor.businessName}
-                                        style={styles.cardImage}
-                                        className="saro-home-cardImage"
-                                        loading="lazy"
-                                        decoding="async"
-                                    />
-                                    <div style={styles.cardOverlay}>
-                                        <span style={vendor.isOpen ? styles.openBadge : styles.closedBadge}>
-                                            {vendor.isOpen ? 'OPEN NOW' : 'CLOSED'}
-                                        </span>
-                                        {vendor.rating && (
-                                            <span style={styles.ratingBadge}>
-                                                <FaStar style={{ fontSize: '12px', marginRight: '4px' }} />
-                                                {vendor.rating}
+            {/* Featured Restaurants */}
+            <section className="py-20 bg-gray-50">
+                <div className="container mx-auto px-4">
+                    <div className="flex justify-between items-end mb-10">
+                        <div>
+                            <h2 className="text-3xl md:text-4xl font-bold mb-2 font-display text-gray-900">Popular Restaurants</h2>
+                            <p className="text-gray-500">Handpicked dining spots just for you</p>
+                        </div>
+                        <Link to="/vendors?type=restaurant" className="hidden sm:flex items-center text-orange-500 font-medium hover:text-orange-600 transition-colors">
+                            View All <FaArrowRight className="ml-2" />
+                        </Link>
+                    </div>
+
+                    <div className="flex flex-wrap justify-center gap-8">
+                        {featuredRestaurants.map((vendor, index) => (
+                            <div className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 overflow-hidden animate-fade-in-up w-full sm:w-[350px] flex-shrink-0" style={{ animationDelay: `${index * 0.1}s` }} key={vendor._id}>
+                                <Link to={`/menu/${vendor._id}`} className="block h-full flex flex-col group">
+                                    <div className="relative h-56 w-full overflow-hidden">
+                                        <img
+                                            src={resolveVendorBannerUrl(vendor, vendorFallbackImage)}
+                                            alt={vendor.businessName}
+                                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                                        />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                        <div className="absolute top-4 left-4">
+                                            <span className={`${vendor.isOpen ? 'bg-green-500' : 'bg-red-500'} text-white text-xs font-bold px-3 py-1 rounded-full shadow-md`}>
+                                                {vendor.isOpen ? 'OPEN' : 'CLOSED'}
                                             </span>
-                                        )}
-                                    </div>
-                                </div>
-                                <div style={styles.cardContent}>
-                                    <div style={styles.cardHeader}>
-                                        <h3 style={styles.cardTitle}>{vendor.businessName}</h3>
-                                        <div style={styles.deliveryInfo}>
-                                            <FaClock style={{ marginRight: '4px', color: '#666' }} />
-                                            <span>25-35 min</span>
                                         </div>
                                     </div>
-                                    <p style={styles.cardCategories}>
-                                        {vendor.categories.slice(0, 2).join(' • ')}
-                                    </p>
-                                    <div style={styles.cardFooter}>
-                                        <div style={styles.location}>
-                                            <FaMapMarkerAlt style={{ marginRight: '6px', color: '#e74c3c' }} />
-                                            <span>Arba Minch</span>
+                                    <div className="p-6 flex flex-col flex-grow">
+                                        <div className="flex justify-between items-start mb-3">
+                                            <h3 className="font-bold text-xl text-gray-900 leading-tight">{vendor.businessName}</h3>
+                                            <div className="flex items-center bg-orange-50 px-2 py-1 rounded-md ml-3 flex-shrink-0">
+                                                <FaStar className="text-yellow-400 text-sm mr-1" />
+                                                <span className="font-bold text-sm text-gray-800">{vendor.rating || '4.5'}</span>
+                                            </div>
                                         </div>
-                                        <span style={styles.viewMenu} className="saro-home-viewMenu">View Menu →</span>
-                                    </div>
-                                </div>
-                            </Link>
-                        </div>
-                    ))}
-                </div>
-                <div style={styles.seeAllContainer}>
-                    <Link to="/vendors?type=restaurant" style={styles.seeAllButton} className="saro-home-seeAllButton">
-                        View All Restaurants
-                    </Link>
-                </div>
-            </section>
-
-            {/* Partner Hotels Section */}
-            <section style={{ ...styles.section, backgroundColor: '#f8f9fa' }}>
-                <div style={styles.sectionHeader}>
-                    <div style={styles.sectionTitleContainer}>
-                        <FaHotel style={styles.sectionIcon} />
-                        <h2 style={styles.sectionTitle}>Partner Hotels</h2>
-                    </div>
-                    <p style={styles.sectionSubtitle}>Order directly to your room or enjoy in-house dining</p>
-                </div>
-
-                <div style={styles.grid}>
-                    {featuredHotels.length > 0 ? featuredHotels.map(vendor => (
-                        <div style={styles.card} className="saro-home-card" key={vendor._id}>
-                            <Link to={`/menu/${vendor._id}`} style={styles.cardLink}>
-                                <div style={styles.cardImageContainer}>
-                                    <img
-                                        src={resolveVendorBannerUrl(vendor, vendorFallbackImage)}
-                                        alt={vendor.businessName}
-                                        style={styles.cardImage}
-                                        className="saro-home-cardImage"
-                                        loading="lazy"
-                                        decoding="async"
-                                    />
-                                    <div style={styles.cardOverlay}>
-                                        <span style={styles.hotelBadge}>HOTEL</span>
-                                    </div>
-                                </div>
-                                <div style={styles.cardContent}>
-                                    <div style={styles.cardHeader}>
-                                        <h3 style={styles.cardTitle}>{vendor.businessName}</h3>
-                                        <div style={styles.deliveryInfo}>
-                                            <FaClock style={{ marginRight: '4px', color: '#666' }} />
-                                            <span>Room Service</span>
+                                        <p className="text-gray-500 text-sm mb-5 line-clamp-1">{vendor.categories.join(' • ')}</p>
+                                        
+                                        <div className="mt-auto pt-4 border-t border-gray-100 flex justify-between items-center">
+                                            <div className="flex items-center text-gray-500 text-sm font-medium">
+                                                <FaClock className="mr-2 text-gray-400" />
+                                                <span>25-35 min</span>
+                                            </div>
+                                            <span className="text-orange-500 font-semibold text-sm group-hover:underline flex items-center">
+                                                View Menu <FaArrowRight className="ml-1 text-xs" />
+                                            </span>
                                         </div>
                                     </div>
-                                    <p style={styles.cardCategories}>Luxury Dining • Room Service</p>
-                                    <div style={styles.cardFooter}>
-                                        <div style={styles.location}>
-                                            <FaMapMarkerAlt style={{ marginRight: '6px', color: '#3498db' }} />
-                                            <span>Central Location</span>
-                                        </div>
-                                        <span style={styles.viewMenu} className="saro-home-viewMenu">Explore →</span>
-                                    </div>
-                                </div>
-                            </Link>
-                        </div>
-                    )) : (
-                        <div style={styles.placeholderCard}>
-                            <FaHotel style={{ fontSize: '48px', color: '#bdc3c7', marginBottom: '1rem' }} />
-                            <h3>More Hotels Coming Soon!</h3>
-                            <p>We're expanding our hotel partnerships</p>
-                        </div>
-                    )}
-                </div>
-            </section>
-
-            {/* Features Section */}
-            <section style={styles.featuresSection}>
-                <div style={styles.featuresContainer}>
-                    <div style={styles.feature} className="saro-home-feature">
-                        <div style={styles.featureIcon}>
-                            <FaShippingFast />
-                        </div>
-                        <h3 style={styles.featureTitle}>Fast Delivery</h3>
-                        <p style={styles.featureDesc}>Average delivery time of 30 minutes with real-time tracking</p>
-                    </div>
-                    <div style={styles.feature} className="saro-home-feature">
-                        <div style={styles.featureIcon}>
-                            <FaShieldAlt />
-                        </div>
-                        <h3 style={styles.featureTitle}>Secure Payments</h3>
-                        <p style={styles.featureDesc}>Chapa integration & cash on delivery for your convenience</p>
-                    </div>
-                    <div style={styles.feature} className="saro-home-feature">
-                        <div style={styles.featureIcon}>
-                            <FaStar />
-                        </div>
-                        <h3 style={styles.featureTitle}>Quality Assured</h3>
-                        <p style={styles.featureDesc}>Verified vendors and customer reviews for best experience</p>
+                                </Link>
+                            </div>
+                        ))}
                     </div>
                 </div>
             </section>
 
-            {/* CTA Section */}
-            <section style={styles.ctaSection}>
-                <div style={styles.ctaContent}>
-                    <h2 style={styles.ctaTitle}>Ready to order your favorite meal?</h2>
-                    <p style={styles.ctaText}>Download our app for exclusive offers and faster ordering</p>
-                    <div style={styles.ctaButtons}>
-                        <Link to="/vendors" style={styles.ctaButtonPrimary} className="saro-home-ctaButtonPrimary">
-                            Start Ordering Now
-                        </Link>
-                        <Link to="/about" style={styles.ctaButtonSecondary} className="saro-home-ctaButtonSecondary">
-                            How It Works
-                        </Link>
+            {/* App Download CTA */}
+            <section className="py-20 bg-white">
+                <div className="container mx-auto px-4">
+                    <div className="bg-gradient-to-r from-orange-500 to-red-600 rounded-3xl p-8 md:p-16 flex flex-col md:flex-row items-center justify-between shadow-2xl relative overflow-hidden">
+                        
+                        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+                        
+                        <div className="relative z-10 text-white max-w-xl text-center md:text-left mb-10 md:mb-0 animate-fade-in-up">
+                            <h2 className="text-3xl md:text-5xl font-extrabold mb-6 leading-tight font-display">Food delivery <br /> in your pocket</h2>
+                            <p className="text-lg opacity-90 mb-10">
+                                Download the Saro Delivery app for a faster, more convenient experience. 
+                                Get exclusive deals, track your orders in real-time, and more!
+                            </p>
+                            <div className="flex flex-wrap justify-center md:justify-start gap-4">
+                                <a href="#" className="flex items-center bg-black text-white hover:bg-gray-800 px-6 py-3 rounded-xl transition-colors shadow-lg">
+                                    <FaApple className="text-3xl mr-3" />
+                                    <div className="text-left">
+                                        <div className="text-[0.65rem] opacity-80 uppercase font-semibold">Download on the</div>
+                                        <div className="text-sm font-bold">App Store</div>
+                                    </div>
+                                </a>
+                                <a href="#" className="flex items-center bg-black text-white hover:bg-gray-800 px-6 py-3 rounded-xl transition-colors shadow-lg">
+                                    <FaGooglePlay className="text-2xl mr-3" />
+                                    <div className="text-left">
+                                        <div className="text-[0.65rem] opacity-80 uppercase font-semibold">GET IT ON</div>
+                                        <div className="text-sm font-bold">Google Play</div>
+                                    </div>
+                                </a>
+                            </div>
+                        </div>
+                        <div className="relative z-10 hidden lg:block animate-fade-in" style={{ animationDelay: '0.4s' }}>
+                            <img 
+                                src="https://img.freepik.com/free-psd/smartphone-mockup_1310-812.jpg?w=1380&t=st=1708892415~exp=1708893015~hmac=6f8e7d2b2d6a5d4a9d8e7c6b5a4d3c2b1a0f9e8d7c6b5a4d3c2b1a0f9e8d7c6b" 
+                                alt="App interface" 
+                                className="w-[300px] rounded-[40px] transform -rotate-12 shadow-[0_30px_60px_rgba(0,0,0,0.4)] border-8 border-gray-900"
+                            />
+                        </div>
                     </div>
                 </div>
             </section>
         </div>
     );
-};
-
-const styles = {
-    container: {
-        width: '100%',
-        overflow: 'hidden',
-    },
-    loadingContainer: {
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '80vh',
-    },
-    spinner: {
-        width: '50px',
-        height: '50px',
-        border: '4px solid #f3f3f3',
-        borderTop: '4px solid #e67e22',
-        borderRadius: '50%',
-        animation: 'spin 1s linear infinite',
-        marginBottom: '1rem',
-    },
-    hero: {
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        color: '#fff',
-        padding: '4rem 2rem',
-        minHeight: '90vh',
-        display: 'flex',
-        alignItems: 'center',
-    },
-    heroContent: {
-        maxWidth: '1200px',
-        margin: '0 auto',
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: '4rem',
-        alignItems: 'center',
-    },
-    heroText: {
-        maxWidth: '600px',
-    },
-    heroTitle: {
-        fontSize: '3.5rem',
-        fontWeight: '800',
-        marginBottom: '1.5rem',
-        lineHeight: '1.2',
-    },
-    highlight: {
-        color: '#ffd700',
-    },
-    heroSubtitle: {
-        fontSize: '1.2rem',
-        marginBottom: '2rem',
-        opacity: '0.9',
-        lineHeight: '1.6',
-    },
-    heroButtons: {
-        display: 'flex',
-        gap: '1rem',
-        marginBottom: '3rem',
-    },
-    primaryButton: {
-        padding: '1rem 2rem',
-        backgroundColor: '#e67e22',
-        color: '#fff',
-        textDecoration: 'none',
-        borderRadius: '8px',
-        fontWeight: '600',
-        display: 'inline-flex',
-        alignItems: 'center',
-        transition: 'all 0.3s ease',
-        boxShadow: '0 4px 15px rgba(230, 126, 34, 0.4)',
-    },
-    secondaryButton: {
-        padding: '1rem 2rem',
-        backgroundColor: 'transparent',
-        color: '#fff',
-        textDecoration: 'none',
-        borderRadius: '8px',
-        fontWeight: '600',
-        border: '2px solid rgba(255,255,255,0.3)',
-        transition: 'all 0.3s ease',
-    },
-    heroStats: {
-        display: 'flex',
-        gap: '3rem',
-        marginTop: '2rem',
-    },
-    stat: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: '1rem',
-    },
-    statIcon: {
-        fontSize: '2rem',
-        color: '#ffd700',
-    },
-    heroImage: {
-        position: 'relative',
-    },
-    foodImage: {
-        width: '100%',
-        borderRadius: '20px',
-        boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
-        transform: 'rotate(3deg)',
-    },
-    section: {
-        padding: '5rem 2rem',
-        maxWidth: '1200px',
-        margin: '0 auto',
-    },
-    sectionHeader: {
-        textAlign: 'center',
-        marginBottom: '3rem',
-    },
-    sectionTitleContainer: {
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '1rem',
-        marginBottom: '1rem',
-    },
-    sectionIcon: {
-        fontSize: '2rem',
-        color: '#e67e22',
-    },
-    sectionTitle: {
-        fontSize: '2.5rem',
-        color: '#2c3e50',
-        margin: '0',
-    },
-    sectionSubtitle: {
-        fontSize: '1.1rem',
-        color: '#7f8c8d',
-        maxWidth: '600px',
-        margin: '0 auto',
-    },
-    grid: {
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-        gap: '2rem',
-        marginBottom: '3rem',
-    },
-    card: {
-        backgroundColor: '#fff',
-        borderRadius: '16px',
-        overflow: 'hidden',
-        boxShadow: '0 10px 30px rgba(0,0,0,0.08)',
-        transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-        height: '100%',
-        border: '1px solid #eee',
-    },
-    cardLink: {
-        textDecoration: 'none',
-        color: 'inherit',
-        display: 'block',
-        height: '100%',
-    },
-    cardImageContainer: {
-        position: 'relative',
-        height: '200px',
-        overflow: 'hidden',
-    },
-    cardImage: {
-        width: '100%',
-        height: '100%',
-        objectFit: 'cover',
-        transition: 'transform 0.3s ease',
-    },
-    cardOverlay: {
-        position: 'absolute',
-        top: '1rem',
-        left: '1rem',
-        right: '1rem',
-        display: 'flex',
-        justifyContent: 'space-between',
-    },
-    openBadge: {
-        backgroundColor: '#27ae60',
-        color: '#fff',
-        padding: '0.25rem 0.75rem',
-        borderRadius: '20px',
-        fontSize: '0.75rem',
-        fontWeight: 'bold',
-    },
-    closedBadge: {
-        backgroundColor: '#e74c3c',
-        color: '#fff',
-        padding: '0.25rem 0.75rem',
-        borderRadius: '20px',
-        fontSize: '0.75rem',
-        fontWeight: 'bold',
-    },
-    ratingBadge: {
-        backgroundColor: '#fff',
-        color: '#f39c12',
-        padding: '0.25rem 0.75rem',
-        borderRadius: '20px',
-        fontSize: '0.75rem',
-        fontWeight: 'bold',
-        display: 'flex',
-        alignItems: 'center',
-    },
-    hotelBadge: {
-        backgroundColor: '#3498db',
-        color: '#fff',
-        padding: '0.25rem 0.75rem',
-        borderRadius: '20px',
-        fontSize: '0.75rem',
-        fontWeight: 'bold',
-    },
-    cardContent: {
-        padding: '1.5rem',
-    },
-    cardHeader: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        marginBottom: '0.5rem',
-    },
-    cardTitle: {
-        fontSize: '1.25rem',
-        margin: '0',
-        color: '#2c3e50',
-        flex: '1',
-    },
-    deliveryInfo: {
-        display: 'flex',
-        alignItems: 'center',
-        fontSize: '0.9rem',
-        color: '#666',
-    },
-    cardCategories: {
-        color: '#7f8c8d',
-        fontSize: '0.9rem',
-        marginBottom: '1rem',
-    },
-    cardFooter: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingTop: '1rem',
-        borderTop: '1px solid #eee',
-    },
-    location: {
-        display: 'flex',
-        alignItems: 'center',
-        fontSize: '0.9rem',
-        color: '#666',
-    },
-    viewMenu: {
-        color: '#e67e22',
-        fontWeight: '600',
-        fontSize: '0.9rem',
-        transition: 'color 0.3s ease',
-    },
-    seeAllContainer: {
-        textAlign: 'center',
-        marginTop: '2rem',
-    },
-    seeAllButton: {
-        display: 'inline-block',
-        padding: '0.75rem 2rem',
-        backgroundColor: 'transparent',
-        color: '#e67e22',
-        textDecoration: 'none',
-        borderRadius: '8px',
-        fontWeight: '600',
-        border: '2px solid #e67e22',
-        transition: 'all 0.3s ease',
-    },
-    placeholderCard: {
-        backgroundColor: '#fff',
-        borderRadius: '16px',
-        padding: '3rem 2rem',
-        textAlign: 'center',
-        gridColumn: '1 / -1',
-        border: '2px dashed #bdc3c7',
-    },
-    featuresSection: {
-        padding: '5rem 2rem',
-        backgroundColor: '#2c3e50',
-    },
-    featuresContainer: {
-        maxWidth: '1200px',
-        margin: '0 auto',
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-        gap: '3rem',
-        textAlign: 'center',
-    },
-    feature: {
-        padding: '2rem',
-        backgroundColor: '#34495e',
-        borderRadius: '12px',
-        transition: 'transform 0.3s ease',
-    },
-    featureIcon: {
-        fontSize: '3rem',
-        color: '#e67e22',
-        marginBottom: '1.5rem',
-    },
-    featureTitle: {
-        color: '#fff',
-        fontSize: '1.5rem',
-        marginBottom: '1rem',
-    },
-    featureDesc: {
-        color: '#bdc3c7',
-        lineHeight: '1.6',
-    },
-    ctaSection: {
-        padding: '5rem 2rem',
-        background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-        color: '#fff',
-        textAlign: 'center',
-    },
-    ctaContent: {
-        maxWidth: '800px',
-        margin: '0 auto',
-    },
-    ctaTitle: {
-        fontSize: '2.5rem',
-        marginBottom: '1rem',
-        fontWeight: '800',
-    },
-    ctaText: {
-        fontSize: '1.2rem',
-        marginBottom: '2rem',
-        opacity: '0.9',
-    },
-    ctaButtons: {
-        display: 'flex',
-        gap: '1rem',
-        justifyContent: 'center',
-        flexWrap: 'wrap',
-    },
-    ctaButtonPrimary: {
-        padding: '1rem 2rem',
-        backgroundColor: '#fff',
-        color: '#f5576c',
-        textDecoration: 'none',
-        borderRadius: '8px',
-        fontWeight: '600',
-        transition: 'all 0.3s ease',
-        boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
-    },
-    ctaButtonSecondary: {
-        padding: '1rem 2rem',
-        backgroundColor: 'transparent',
-        color: '#fff',
-        textDecoration: 'none',
-        borderRadius: '8px',
-        fontWeight: '600',
-        border: '2px solid rgba(255,255,255,0.3)',
-        transition: 'all 0.3s ease',
-    },
 };
 
 export default Home;
