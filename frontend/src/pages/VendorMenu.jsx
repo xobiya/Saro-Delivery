@@ -1,6 +1,6 @@
 import { useState, useEffect, useContext, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FaArrowLeft, FaStar, FaClock, FaMapMarkerAlt, FaShoppingCart, FaFilter, FaPlus } from 'react-icons/fa';
+import { FaArrowLeft, FaStar, FaClock, FaMapMarkerAlt, FaShoppingCart, FaFilter, FaPlus, FaUtensils } from 'react-icons/fa';
 import api from '../utils/api';
 import CartContext from '../context/CartContext';
 import { useLocale } from '../context/LocaleContext.jsx';

@@ -4,7 +4,7 @@ import { SocketProvider } from './context/SocketContext';
 import { CartProvider } from './context/CartContext';
 import { ToastProvider } from './context/ToastContext';
 import ErrorBoundary from './components/ErrorBoundary';
-import Navbar from './components/Navbar';
+import MainLayout from './components/MainLayout';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Home from './pages/Home';
@@ -13,13 +13,13 @@ import Contact from './pages/Contact';
 import VendorMenu from './pages/VendorMenu';
 import VendorDashboard from './pages/VendorDashboard';
 import DriverDashboard from './pages/DriverDashboard';
+import AdminDashboard from './pages/AdminDashboard';
 import OrderTracking from './pages/OrderTracking';
 import ProtectedRoute from './components/ProtectedRoute';
 import VendorList from './pages/VendorList';
 import Checkout from './pages/Checkout';
 import OAuthCallback from './pages/OAuthCallback';
 import Profile from './pages/Profile';
-import Footer from './components/Footer';
 import ScrollToTop from './components/ScrollToTop';
 
 function App() {
@@ -31,8 +31,7 @@ function App() {
                         <ToastProvider>
                             <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                                 <ScrollToTop />
-                                <Navbar />
-                                <main style={{ minHeight: '70vh' }}>
+                                <MainLayout>
                                     <Routes>
                                         <Route path="/" element={<Home />} />
                                         <Route path="/vendors" element={<VendorList />} />
@@ -79,6 +78,15 @@ function App() {
                                         />
 
                                         <Route
+                                            path="/admin/dashboard"
+                                            element={
+                                                <ProtectedRoute allowedRoles={['admin']}>
+                                                    <AdminDashboard />
+                                                </ProtectedRoute>
+                                            }
+                                        />
+
+                                        <Route
                                             path="/track/:id"
                                             element={
                                                 <ProtectedRoute allowedRoles={['customer', 'driver', 'admin']}>
@@ -89,9 +97,7 @@ function App() {
 
                                         <Route path="/menu/:id" element={<VendorMenu />} />
                                     </Routes>
-                                </main>
-                                <Footer />
-
+                                </MainLayout>
                             </Router>
                         </ToastProvider>
                     </CartProvider>

@@ -15,6 +15,13 @@ L.Icon.Default.mergeOptions({
     shadowUrl: markerShadow,
 });
 
+const driverIcon = new L.Icon({
+    iconUrl: 'https://cdn-icons-png.flaticon.com/512/3198/3198336.png', // Motorcycle icon
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+    popupAnchor: [0, -40],
+});
+
 // Component to handle map centering and bounds
 const MapBounds = ({ points }) => {
     const map = useMap();
@@ -29,13 +36,14 @@ const MapBounds = ({ points }) => {
     return null;
 };
 
-const MapView = ({ pickup, dropoff }) => {
+const MapView = ({ pickup, dropoff, driverLocation }) => {
     // Default Arba Minch coordinates if none provided
     const defaultCenter = [6.02, 37.55];
 
     const points = [];
     if (pickup?.coordinates?.lat) points.push([pickup.coordinates.lat, pickup.coordinates.lng]);
     if (dropoff?.coordinates?.lat) points.push([dropoff.coordinates.lat, dropoff.coordinates.lng]);
+    if (driverLocation?.lat) points.push([driverLocation.lat, driverLocation.lng]);
 
     return (
         <div style={{ height: '100%', width: '100%', borderRadius: '16px', overflow: 'hidden' }}>
@@ -59,6 +67,12 @@ const MapView = ({ pickup, dropoff }) => {
                 {dropoff?.coordinates?.lat && (
                     <Marker position={[dropoff.coordinates.lat, dropoff.coordinates.lng]}>
                         <Popup>Drop-off: {dropoff.address}</Popup>
+                    </Marker>
+                )}
+
+                {driverLocation?.lat && (
+                    <Marker position={[driverLocation.lat, driverLocation.lng]} icon={driverIcon}>
+                        <Popup>Driver is here!</Popup>
                     </Marker>
                 )}
 

@@ -48,6 +48,9 @@ const Navbar = () => {
                     <Link to="/vendors" className={`nav-link text-gray-100 hover:text-white ${isActive('/vendors') ? 'active' : ''}`}>{t('nav.vendors')}</Link>
                     <Link to="/about" className={`nav-link text-gray-100 hover:text-white ${isActive('/about') ? 'active' : ''}`}>{t('nav.about')}</Link>
                     <Link to="/contact" className={`nav-link text-gray-100 hover:text-white ${isActive('/contact') ? 'active' : ''}`}>{t('nav.contact')}</Link>
+                    {user && user.role === 'admin' && (
+                        <Link to="/admin/dashboard" className={`nav-link font-bold text-orange-400 hover:text-orange-300 ${isActive('/admin/dashboard') ? 'active' : ''}`}>Admin</Link>
+                    )}
                 </div>
 
                 {/* Actions */}
@@ -79,7 +82,7 @@ const Navbar = () => {
                         <div className="hide-mobile flex items-center gap-4">
                             <Link to="/profile" className="flex items-center gap-2" style={{ color: '#fff', textDecoration: 'none' }}>
                                 <FaUser />
-                                <span style={{ fontSize: '0.9rem' }}>{user.name.split(' ')[0]}</span>
+                                <span style={{ fontSize: '0.9rem' }}>{user.name ? user.name.split(' ')[0] : 'User'}</span>
                             </Link>
                             <button onClick={handleLogout} className="btn-ghost" style={{ color: '#fff' }}>
                                 <FaSignOutAlt />
@@ -109,12 +112,15 @@ const Navbar = () => {
                     <Link to="/vendors" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>{t('nav.vendors')}</Link>
                     <Link to="/about" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>{t('nav.about')}</Link>
                     <Link to="/contact" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>{t('nav.contact')}</Link>
+                    {user && user.role === 'admin' && (
+                        <Link to="/admin/dashboard" className="mobile-nav-link font-bold text-orange-500" onClick={() => setMobileMenuOpen(false)}>Admin Panel</Link>
+                    )}
                     
                     <div className="mt-auto pt-10">
                         {user ? (
                             <div className="flex flex-col gap-4">
                                 <Link to="/profile" className="btn btn-outline" onClick={() => setMobileMenuOpen(false)}>
-                                    <FaUser style={{ marginRight: '8px' }} /> {user.name}
+                                    <FaUser style={{ marginRight: '8px' }} /> {user.name || 'User'}
                                 </Link>
                                 <button onClick={handleLogout} className="btn btn-primary">Logout</button>
                             </div>

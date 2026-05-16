@@ -28,24 +28,22 @@ const DeliveryCard = ({ order, onUpdateStatus, userRole, compact = false }) => {
         }
     };
 
-    const cardStyle = compact ? { ...styles.card, ...styles.compactCard } : styles.card;
-
     return (
-        <div style={cardStyle}>
+        <div className={`${compact ? 'bg-white/90 backdrop-blur-md p-4 shadow-lg border-white/50' : 'bg-white p-6 shadow-sm border-gray-100'} rounded-2xl border flex flex-col mb-4 transition-all hover:shadow-md`}>
             {!compact && (
-                <div style={styles.header}>
-                    <div style={styles.headerLeft}>
-                        <span style={styles.orderId}>#{order._id.substring(0, 8)}</span>
-                        <span style={{ ...styles.badge, backgroundColor: getStatusColor(order.status) }}>
+                <div className="flex justify-between items-center mb-5 pb-4 border-b border-gray-50">
+                    <div className="flex items-center gap-3">
+                        <span className="text-lg font-bold text-gray-800 font-mono">#{order._id.substring(0, 8).toUpperCase()}</span>
+                        <span 
+                            className="text-white px-3 py-1 rounded-full text-xs uppercase font-bold tracking-wide"
+                            style={{ backgroundColor: getStatusColor(order.status) }}
+                        >
                             {order.status.replace('_', ' ')}
                         </span>
                     </div>
-                    <div style={styles.orderType}>
+                    <div className="text-sm font-medium text-gray-600 bg-gray-50 px-3 py-1.5 rounded-lg flex items-center gap-2 border border-gray-100">
                         {order.type === 'food_delivery' ? '🍕 Food' : '📦 Package'}
-                        <span style={{
-                            ...styles.payBadge,
-                            backgroundColor: order.paymentStatus === 'paid' ? '#27ae60' : '#f39c12'
-                        }}>
+                        <span className={`text-[10px] px-2 py-0.5 rounded text-white font-bold ${order.paymentStatus === 'paid' ? 'bg-green-500' : 'bg-orange-500'}`}>
                             {order.paymentStatus === 'paid' ? 'PAID' : 'UNPAID'}
                         </span>
                     </div>
@@ -53,60 +51,71 @@ const DeliveryCard = ({ order, onUpdateStatus, userRole, compact = false }) => {
             )}
 
             {userRole === 'customer' && order.status !== 'pending' && order.status !== 'cancelled' && (
-                <div style={styles.trackingBanner}>
-                    <a href={`/track/${order._id}`} style={styles.trackLink}>🛰️ Live Track Delivery</a>
+                <div className="bg-blue-50 border border-blue-100 p-3 rounded-xl mb-4 text-center hover:bg-blue-100 transition-colors">
+                    <a href={`/track/${order._id}`} className="text-blue-600 font-bold text-sm flex justify-center items-center gap-2">
+                        🛰️ Live Track Delivery
+                    </a>
                 </div>
             )}
 
-            <div style={styles.body}>
+            <div className="flex-1">
                 {!compact && (
-                    <div style={styles.locationSection}>
-                        <div style={styles.locItem}>
-                            <div style={styles.locDot} />
-                            <div style={styles.locContent}>
-                                <span style={styles.locLabel}>PICKUP</span>
-                                <span style={styles.locAddress}>{order.pickupLocation?.address}</span>
+                    <div className="flex flex-col relative mb-6 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                        <div className="flex items-start gap-4">
+                            <div className="w-3 h-3 rounded-full bg-blue-500 mt-1.5 ring-4 ring-blue-100"></div>
+                            <div className="flex flex-col">
+                                <span className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-0.5">Pickup</span>
+                                <span className="text-sm text-gray-800 font-medium">{order.pickupLocation?.address}</span>
                             </div>
                         </div>
-                        <div style={styles.locConnector} />
-                        <div style={styles.locItem}>
-                            <div style={{ ...styles.locDot, backgroundColor: '#e67e22' }} />
-                            <div style={styles.locContent}>
-                                <span style={styles.locLabel}>DROP OFF</span>
-                                <span style={styles.locAddress}>{order.dropoffLocation?.address}</span>
+                        <div className="w-0.5 h-6 bg-gray-200 ml-1.5 my-1"></div>
+                        <div className="flex items-start gap-4">
+                            <div className="w-3 h-3 rounded-full bg-orange-500 mt-1.5 ring-4 ring-orange-100"></div>
+                            <div className="flex flex-col">
+                                <span className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-0.5">Drop Off</span>
+                                <span className="text-sm text-gray-800 font-medium">{order.dropoffLocation?.address}</span>
                             </div>
                         </div>
-                        <button onClick={() => openNavigation(order.dropoffLocation)} style={styles.navBtn}>
+                        <button 
+                            onClick={() => openNavigation(order.dropoffLocation)} 
+                            className="absolute right-4 top-1/2 -translate-y-1/2 px-4 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-sm font-bold shadow-sm transition-colors"
+                        >
                             📍 Navigate
                         </button>
                     </div>
                 )}
 
                 {isDriver && order.user && (
-                    <div style={compact ? styles.compactCustomerBox : styles.customerBox}>
-                        <div style={styles.custInfo}>
-                            <span style={styles.custName}>{order.user.name}</span>
-                            <span style={styles.custPhone}>{order.user.phone}</span>
+                    <div className={`${compact ? 'bg-blue-50/50 p-3 rounded-xl mb-3' : 'bg-blue-50 p-4 rounded-xl mb-6'} flex justify-between items-center border border-blue-100`}>
+                        <div className="flex flex-col">
+                            <span className="font-bold text-gray-800 text-sm">{order.user.name}</span>
+                            <span className="text-xs text-blue-600 font-medium">{order.user.phone}</span>
                         </div>
-                        <div style={styles.custActions}>
-                            <a href={`tel:${order.user.phone}`} style={styles.callBtn}>📞 Call</a>
+                        <div className="flex gap-2 items-center">
+                            <a href={`tel:${order.user.phone}`} className="bg-white text-green-600 px-3 py-1.5 rounded-lg border border-green-200 text-xs font-bold hover:bg-green-50 transition-colors shadow-sm">
+                                📞 Call
+                            </a>
                             {compact && (
-                                <button onClick={() => openNavigation(order.dropoffLocation)} style={styles.compactNavBtn}>📍 Nav</button>
+                                <button onClick={() => openNavigation(order.dropoffLocation)} className="bg-white text-blue-600 px-3 py-1.5 rounded-lg border border-blue-200 text-xs font-bold hover:bg-blue-50 transition-colors shadow-sm">
+                                    📍 Nav
+                                </button>
                             )}
                         </div>
                     </div>
                 )}
 
                 {!compact && (
-                    <div style={styles.itemPreview}>
-                        <span style={styles.itemTitle}>Order Summary</span>
-                        {order.items.map((item, idx) => (
-                            <div key={idx} style={styles.itemRow}>
-                                <span>{item.quantity}x {item.name}</span>
-                                <span>{item.price * item.quantity} ETB</span>
-                            </div>
-                        ))}
-                        <div style={styles.totalRow}>
+                    <div className="border-t border-gray-100 pt-4 mb-6">
+                        <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-3">Order Summary</span>
+                        <div className="space-y-2">
+                            {order.items.map((item, idx) => (
+                                <div key={idx} className="flex justify-between text-sm text-gray-600">
+                                    <span><span className="font-bold text-gray-800">{item.quantity}x</span> {item.name}</span>
+                                    <span className="font-medium">{item.price * item.quantity} ETB</span>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="flex justify-between mt-4 pt-3 border-t border-dashed border-gray-200 font-bold text-orange-600 text-lg">
                             <span>Total Pay</span>
                             <span>{order.totalAmount} ETB</span>
                         </div>
@@ -114,29 +123,51 @@ const DeliveryCard = ({ order, onUpdateStatus, userRole, compact = false }) => {
                 )}
 
                 {order.notes && !compact && (
-                    <div style={styles.notesBox}>
-                        <strong>Note:</strong> {order.notes}
+                    <div className="text-sm text-amber-800 bg-amber-50 p-3 rounded-xl border border-amber-100 mb-6">
+                        <strong className="font-bold mr-1">Note:</strong> {order.notes}
                     </div>
                 )}
             </div>
 
             {isDriver && order.status !== 'delivered' && order.status !== 'cancelled' && (
-                <div style={styles.actions}>
+                <div className="mt-auto pt-2">
                     {!order.driver ? (
-                        <button onClick={() => handleStatusChange('confirmed')} style={styles.acceptBtn}>Accept Job</button>
+                        <button 
+                            onClick={() => handleStatusChange('confirmed')} 
+                            className="w-full py-3.5 rounded-xl bg-gray-900 hover:bg-black text-white font-bold shadow-md transition-colors"
+                        >
+                            Accept Job
+                        </button>
                     ) : (
-                        <div style={styles.statusStepper}>
+                        <div className="flex w-full">
                             {(order.status === 'confirmed' || order.status === 'preparing') && (
-                                <div style={styles.waitMessage}>Waiting for Vendor...</div>
+                                <div className="text-center py-3 text-purple-600 font-bold w-full bg-purple-50 rounded-xl border border-purple-100">
+                                    Waiting for Vendor...
+                                </div>
                             )}
                             {order.status === 'ready' && (
-                                <button onClick={() => handleStatusChange('picked_up')} style={styles.stepBtn}>Confirm Pickup</button>
+                                <button 
+                                    onClick={() => handleStatusChange('picked_up')} 
+                                    className="w-full py-3.5 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-bold shadow-md transition-colors"
+                                >
+                                    Confirm Pickup
+                                </button>
                             )}
                             {order.status === 'picked_up' && (
-                                <button onClick={() => handleStatusChange('in_transit')} style={{ ...styles.stepBtn, backgroundColor: '#f39c12' }}>Start Delivery</button>
+                                <button 
+                                    onClick={() => handleStatusChange('in_transit')} 
+                                    className="w-full py-3.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold shadow-md transition-colors"
+                                >
+                                    Start Delivery
+                                </button>
                             )}
                             {order.status === 'in_transit' && (
-                                <button onClick={() => handleStatusChange('delivered')} style={{ ...styles.stepBtn, backgroundColor: '#27ae60' }}>Complete Delivery</button>
+                                <button 
+                                    onClick={() => handleStatusChange('delivered')} 
+                                    className="w-full py-3.5 rounded-xl bg-green-500 hover:bg-green-600 text-white font-bold shadow-md transition-colors"
+                                >
+                                    Complete Delivery
+                                </button>
                             )}
                         </div>
                     )}
@@ -144,267 +175,6 @@ const DeliveryCard = ({ order, onUpdateStatus, userRole, compact = false }) => {
             )}
         </div>
     );
-};
-
-const styles = {
-    card: {
-        backgroundColor: '#fff',
-        borderRadius: '16px',
-        padding: '1.5rem',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
-        border: '1px solid #f0f0f0',
-        display: 'flex',
-        flexDirection: 'column',
-        marginBottom: '1rem',
-    },
-    compactCard: {
-        backgroundColor: 'rgba(255, 255, 255, 0.85)',
-        backdropFilter: 'blur(12px)',
-        padding: '1rem',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
-        border: '1px solid rgba(255, 255, 255, 0.3)',
-    },
-    header: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '1.5rem',
-    },
-    headerLeft: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: '0.75rem',
-    },
-    orderId: {
-        fontSize: '1.1rem',
-        fontWeight: 'bold',
-        color: '#34495e',
-    },
-    badge: {
-        color: '#fff',
-        padding: '0.3rem 0.8rem',
-        borderRadius: '20px',
-        fontSize: '0.75rem',
-        textTransform: 'uppercase',
-        fontWeight: 'bold',
-        letterSpacing: '0.5px',
-    },
-    orderType: {
-        fontSize: '0.85rem',
-        color: '#7f8c8d',
-        backgroundColor: '#f8f9fa',
-        padding: '0.3rem 0.6rem',
-        borderRadius: '4px',
-    },
-    locationSection: {
-        display: 'flex',
-        flexDirection: 'column',
-        position: 'relative',
-        marginBottom: '1.5rem',
-    },
-    locItem: {
-        display: 'flex',
-        alignItems: 'flex-start',
-        gap: '1rem',
-    },
-    locDot: {
-        width: '10px',
-        height: '10px',
-        borderRadius: '50%',
-        backgroundColor: '#3498db',
-        marginTop: '1.2rem',
-    },
-    locConnector: {
-        width: '2px',
-        height: '20px',
-        backgroundColor: '#eee',
-        marginLeft: '4px',
-        margin: '2px 0 2px 4px',
-    },
-    locContent: {
-        display: 'flex',
-        flexDirection: 'column',
-    },
-    locLabel: {
-        fontSize: '0.65rem',
-        fontWeight: 'bold',
-        color: '#bdc3c7',
-        letterSpacing: '1px',
-    },
-    locAddress: {
-        fontSize: '0.95rem',
-        color: '#2c3e50',
-        fontWeight: '500',
-    },
-    navBtn: {
-        position: 'absolute',
-        right: 0,
-        top: '50%',
-        transform: 'translateY(-50%)',
-        padding: '0.5rem 0.8rem',
-        borderRadius: '8px',
-        border: '1px solid #ddd',
-        background: '#fff',
-        cursor: 'pointer',
-        fontSize: '0.85rem',
-        color: '#34495e',
-    },
-    compactNavBtn: {
-        padding: '4px 8px',
-        borderRadius: '6px',
-        border: '1px solid #3498db',
-        color: '#3498db',
-        background: '#fff',
-        fontSize: '0.75rem',
-        fontWeight: 'bold',
-        cursor: 'pointer',
-    },
-    customerBox: {
-        backgroundColor: '#f1f8ff',
-        padding: '1rem',
-        borderRadius: '12px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '1.5rem',
-    },
-    compactCustomerBox: {
-        backgroundColor: 'rgba(52, 152, 219, 0.05)',
-        padding: '0.75rem',
-        borderRadius: '10px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '1rem',
-    },
-    custInfo: {
-        display: 'flex',
-        flexDirection: 'column',
-    },
-    custActions: {
-        display: 'flex',
-        gap: '8px',
-        alignItems: 'center',
-    },
-    custName: {
-        fontWeight: 'bold',
-        color: '#2c3e50',
-        fontSize: '0.95rem',
-    },
-    custPhone: {
-        fontSize: '0.8rem',
-        color: '#3498db',
-    },
-    callBtn: {
-        textDecoration: 'none',
-        backgroundColor: '#fff',
-        color: '#27ae60',
-        padding: '0.4rem 0.8rem',
-        borderRadius: '8px',
-        border: '1px solid #27ae60',
-        fontSize: '0.8rem',
-        fontWeight: 'bold',
-    },
-    itemPreview: {
-        borderTop: '1px solid #eee',
-        paddingTop: '1rem',
-        marginBottom: '1.5rem',
-    },
-    itemTitle: {
-        fontSize: '0.8rem',
-        fontWeight: 'bold',
-        color: '#95a5a6',
-        display: 'block',
-        marginBottom: '0.5rem',
-    },
-    itemRow: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        fontSize: '0.85rem',
-        color: '#7f8c8d',
-        marginBottom: '0.25rem',
-    },
-    totalRow: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        marginTop: '0.75rem',
-        paddingTop: '0.75rem',
-        borderTop: '1px dashed #eee',
-        fontWeight: 'bold',
-        fontSize: '1rem',
-        color: '#e67e22',
-    },
-    notesBox: {
-        fontSize: '0.8rem',
-        color: '#7f8c8d',
-        backgroundColor: '#fdf7e3',
-        padding: '0.75rem',
-        borderRadius: '8px',
-        marginBottom: '1.5rem',
-    },
-    actions: {
-        marginTop: 'auto',
-    },
-    acceptBtn: {
-        width: '100%',
-        padding: '0.8rem',
-        borderRadius: '12px',
-        border: 'none',
-        backgroundColor: '#34495e',
-        color: '#fff',
-        fontSize: '0.95rem',
-        fontWeight: 'bold',
-        cursor: 'pointer',
-        boxShadow: '0 4px 15px rgba(52, 73, 94, 0.2)',
-    },
-    statusStepper: {
-        display: 'flex',
-        width: '100%',
-    },
-    stepBtn: {
-        width: '100%',
-        padding: '0.8rem',
-        borderRadius: '12px',
-        border: 'none',
-        backgroundColor: '#3498db',
-        color: '#fff',
-        fontSize: '0.95rem',
-        fontWeight: 'bold',
-        cursor: 'pointer',
-    },
-    waitMessage: {
-        textAlign: 'center',
-        padding: '0.8rem',
-        color: '#9b59b6',
-        fontWeight: 'bold',
-        width: '100%',
-        backgroundColor: '#f4f0f7',
-        borderRadius: '8px',
-        fontSize: '0.9rem',
-    },
-    payBadge: {
-        fontSize: '0.65rem',
-        padding: '0.1rem 0.4rem',
-        borderRadius: '4px',
-        color: '#fff',
-        marginLeft: '0.5rem',
-        fontWeight: 'bold',
-        verticalAlign: 'middle',
-    },
-    trackingBanner: {
-        backgroundColor: '#f1f8ff',
-        padding: '0.8rem',
-        borderRadius: '8px',
-        marginBottom: '1rem',
-        textAlign: 'center',
-        border: '1px dashed #3498db',
-    },
-    trackLink: {
-        color: '#3498db',
-        textDecoration: 'none',
-        fontWeight: 'bold',
-        fontSize: '0.9rem',
-    }
 };
 
 export default DeliveryCard;
