@@ -1,332 +1,167 @@
 import { useState, useEffect, useContext } from 'react';
 import api from '../utils/api';
-import SocketContext from '../context/SocketContext';
+import AuthContext from '../context/AuthContext';
+import ToastContext from '../context/ToastContext';
+import { HiOutlineUserCircle, HiOutlineArrowPath } from 'react-icons/hi2';
+import { useNavigate } from 'react-router-dom';
+
+// Vendor Components
+import VendorSidebar from '../components/vendor/VendorSidebar';
+import KitchenPipeline from '../components/vendor/KitchenPipeline';
 import ProductManager from '../components/ProductManager';
 import VendorSettings from '../components/VendorSettings';
-import { FaBoxOpen, FaClipboardList, FaCheckCircle, FaMoneyBillWave, FaClock, FaCheck, FaTimes, FaCog, FaHistory, FaStar, FaUser } from 'react-icons/fa';
 
 const VendorDashboard = () => {
+    const { user, logout } = useContext(AuthContext);
+    const { addToast } = useContext(ToastContext);
+    const navigate = useNavigate();
+    const [activeTab, setActiveTab] = useState('orders');
+    const [loading, setLoading] = useState(true);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+    const [vendorProfile, setVendorProfile] = useState(null);
     const [orders, setOrders] = useState([]);
-    const [view, setView] = useState('orders'); // 'orders', 'products', 'settings', or 'reviews'
     const [reviews, setReviews] = useState([]);
-    const [vendor, setVendor] = useState(null);
-    const socket = useContext(SocketContext);
 
     useEffect(() => {
-        // Only fetch orders if in orders view (optional optimization, but good practice)
-        if (view === 'orders') {
-            fetchOrders();
-        } else if (view === 'reviews') {
-            fetchReviews();
+        if (user) {
+            fetchData();
         }
-    }, [view]);
+    }, [user, activeTab]);
 
-    useEffect(() => {
-        if (view === 'orders') {
-            fetchOrders();
-        }
-
-        if (socket) {
-            socket.on('orders_updated', (data) => {
-                if (view === 'orders') fetchOrders();
-            });
-        }
-
-        return () => {
-            if (socket) socket.off('orders_updated');
-        };
-    }, [socket, view]);
-
-    const fetchOrders = async () => {
+    const fetchData = async () => {
+        setLoading(true);
         try {
-            const { data } = await api.get('/deliveries');
-            const sorted = data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-            setOrders(sorted);
-        } catch (error) {
-            console.error('Error fetching orders:', error);
-        }
-    };
+            const [profileRes, ordersRes] = await Promise.all([
+                api.get('/profile/vendor').catch(() => ({ data: null })),
+                api.get('/deliveries')
+            ]);
+            
+            setVendorProfile(profileRes.data);
+            setOrders(ordersRes.data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
 
-    const fetchReviews = async () => {
-        try {
-            // First get vendor info to get the ID
-            const { data: profile } = await api.get('/profile/vendor');
-            setVendor(profile);
-            const { data: revs } = await api.get(`/reviews/vendor/${profile._id}`);
-            setReviews(revs);
+            if (activeTab === 'reviews' && profileRes.data) {
+                const { data: revs } = await api.get(`/reviews/vendor/${profileRes.data._id}`);
+                setReviews(revs);
+            }
         } catch (error) {
-            console.error('Error fetching reviews:', error);
+            console.error('Error fetching vendor data:', error);
+            addToast('Failed to sync merchant data', 'error');
+        } finally {
+            setLoading(false);
         }
     };
 
     const updateStatus = async (id, status) => {
         try {
             await api.put(`/deliveries/${id}`, { status });
-            fetchOrders();
+            addToast(`Order status updated to ${status}`, 'success');
+            fetchData();
         } catch (error) {
-            console.error('Error updating status:', error);
-            alert('Failed to update status.');
+            addToast('Failed to update order status', 'error');
         }
     };
 
-    const activeOrders = orders.filter(o => o.status !== 'delivered' && o.status !== 'cancelled');
-    const historyOrders = orders.filter(o => o.status === 'delivered' || o.status === 'cancelled');
-    const totalRevenue = historyOrders
-        .filter(o => o.status === 'delivered')
-        .reduce((sum, o) => sum + (o.totalAmount || 0), 0);
-
-    const [orderSubTab, setOrderSubTab] = useState('active'); // 'active' or 'history'
-
-    const getStatusColor = (status) => {
-        switch (status) {
-            case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-            case 'preparing': return 'bg-blue-100 text-blue-800 border-blue-200';
-            case 'ready': return 'bg-indigo-100 text-indigo-800 border-indigo-200';
-            case 'picked_up': return 'bg-purple-100 text-purple-800 border-purple-200';
-            case 'in_transit': return 'bg-orange-100 text-orange-800 border-orange-200';
-            case 'delivered': return 'bg-green-100 text-green-800 border-green-200';
-            case 'cancelled': return 'bg-red-100 text-red-800 border-red-200';
-            default: return 'bg-gray-100 text-gray-800 border-gray-200';
-        }
+    const handleLogout = () => {
+        logout();
+        navigate('/login');
     };
+
+    if (!user || user.role !== 'vendor') {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-screen bg-slate-900 text-white p-6 text-center">
+                <HiOutlineUserCircle className="text-9xl text-orange-500 mb-6 animate-pulse" />
+                <h2 className="text-4xl font-black tracking-tighter uppercase">Merchant Access Required</h2>
+                <button onClick={() => navigate('/')} className="mt-8 px-10 py-4 bg-orange-500 rounded-full font-black hover:bg-orange-600 transition-all shadow-xl">Return to Portal</button>
+            </div>
+        );
+    }
 
     return (
-        <div className="bg-gray-50 min-h-screen pt-32 pb-20">
-            <div className="container mx-auto px-4 max-w-7xl">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 animate-fade-in-up">
-                    <div>
-                        <h2 className="text-3xl font-extrabold text-gray-900 font-display">Vendor Dashboard</h2>
-                        <p className="text-gray-500 mt-1">Manage your restaurant orders and products.</p>
+        <div className="flex min-h-screen bg-[#F8FAFC]">
+            <VendorSidebar 
+                activeTab={activeTab} 
+                setActiveTab={setActiveTab} 
+                isSidebarOpen={isSidebarOpen} 
+                logout={handleLogout}
+                vendorName={vendorProfile?.businessName}
+            />
+
+            <main className={`${isSidebarOpen ? 'ml-72' : 'ml-20'} flex-1 transition-all duration-500 min-h-screen flex flex-col`}>
+                {/* Header */}
+                <header className="h-24 bg-white/80 backdrop-blur-md border-b border-slate-100 flex items-center justify-between px-10 sticky top-0 z-40">
+                    <div className="flex items-center gap-6">
+                        <button 
+                            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                            className="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:bg-slate-100 hover:text-slate-900 transition-all"
+                        >
+                            <HiOutlineArrowPath size={20} className={loading ? 'animate-spin' : ''} />
+                        </button>
+                        <div>
+                            <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest leading-none">{activeTab.replace('-', ' ')}</h2>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Saro Merchant Protocol</p>
+                        </div>
                     </div>
-                </div>
 
-                {/* Main Tabs */}
-                <div className="flex gap-4 mb-8 border-b border-gray-200 animate-fade-in-up">
-                    <button
-                        className={`pb-4 px-4 text-lg font-bold transition-all relative ${view === 'orders' ? 'text-orange-500' : 'text-gray-500 hover:text-gray-700'}`}
-                        onClick={() => setView('orders')}
-                    >
-                        <span className="flex items-center gap-2"><FaClipboardList /> Orders</span>
-                        {view === 'orders' && <div className="absolute bottom-0 left-0 w-full h-1 bg-orange-500 rounded-t-lg"></div>}
-                    </button>
-                    <button
-                        className={`pb-4 px-4 text-lg font-bold transition-all relative ${view === 'products' ? 'text-orange-500' : 'text-gray-500 hover:text-gray-700'}`}
-                        onClick={() => setView('products')}
-                    >
-                        <span className="flex items-center gap-2"><FaBoxOpen /> Menu & Products</span>
-                        {view === 'products' && <div className="absolute bottom-0 left-0 w-full h-1 bg-orange-500 rounded-t-lg"></div>}
-                    </button>
-                    <button
-                        className={`pb-4 px-4 text-lg font-bold transition-all relative ${view === 'settings' ? 'text-orange-500' : 'text-gray-500 hover:text-gray-700'}`}
-                        onClick={() => setView('settings')}
-                    >
-                        <span className="flex items-center gap-2"><FaCog /> Restaurant Settings</span>
-                        {view === 'settings' && <div className="absolute bottom-0 left-0 w-full h-1 bg-orange-500 rounded-t-lg"></div>}
-                    </button>
-                    <button
-                        className={`pb-4 px-4 text-lg font-bold transition-all relative ${view === 'reviews' ? 'text-orange-500' : 'text-gray-500 hover:text-gray-700'}`}
-                        onClick={() => setView('reviews')}
-                    >
-                        <span className="flex items-center gap-2"><FaStar /> Reviews</span>
-                        {view === 'reviews' && <div className="absolute bottom-0 left-0 w-full h-1 bg-orange-500 rounded-t-lg"></div>}
-                    </button>
-                </div>
+                    <div className="flex items-center gap-6">
+                        <div className="hidden md:flex flex-col items-end">
+                            <span className="text-sm font-black text-slate-900">{user.name}</span>
+                            <span className="text-[10px] font-black text-orange-500 uppercase tracking-widest">Active Shift</span>
+                        </div>
+                        <div className="w-12 h-12 bg-slate-100 rounded-2xl border-4 border-white shadow-lg overflow-hidden">
+                            <img src={user.avatarUrl || `https://ui-avatars.com/api/?name=${user.name}&background=f97316&color=fff`} alt="Profile" className="w-full h-full object-cover" />
+                        </div>
+                    </div>
+                </header>
 
-                {view === 'orders' ? (
-                    <div className="space-y-6 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-                        
-                        {/* Sub Tabs and Stats */}
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 flex flex-col sm:flex-row justify-between items-center gap-4">
-                            <div className="flex bg-gray-100 p-1 rounded-xl">
-                                <button
-                                    onClick={() => setOrderSubTab('active')}
-                                    className={`px-6 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2 ${orderSubTab === 'active' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                                >
-                                    <FaClock className={orderSubTab === 'active' ? 'text-orange-500' : ''} /> 
-                                    Active Orders <span className="bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full text-xs">{activeOrders.length}</span>
-                                </button>
-                                <button
-                                    onClick={() => setOrderSubTab('history')}
-                                    className={`px-6 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2 ${orderSubTab === 'history' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                                >
-                                    <FaCheckCircle className={orderSubTab === 'history' ? 'text-green-500' : ''} /> 
-                                    History <span className="bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full text-xs">{historyOrders.length}</span>
-                                </button>
+                <div className="p-10 max-w-7xl mx-auto w-full flex-1">
+                    {loading ? (
+                        <div className="flex flex-col items-center justify-center py-60">
+                            <div className="relative">
+                                <div className="w-20 h-20 border-4 border-slate-200 border-t-orange-500 rounded-full animate-spin"></div>
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <div className="w-10 h-10 bg-slate-900 rounded-lg animate-pulse"></div>
+                                </div>
                             </div>
-                            
-                            {orderSubTab === 'history' && (
-                                <div className="flex items-center gap-3 bg-green-50 px-5 py-3 rounded-xl border border-green-100">
-                                    <FaMoneyBillWave className="text-green-500 text-xl" />
-                                    <div>
-                                        <p className="text-xs font-bold text-green-800 uppercase tracking-wider">Total Revenue</p>
-                                        <p className="text-xl font-extrabold text-green-600 leading-none">{totalRevenue} ETB</p>
+                            <p className="text-slate-400 font-black uppercase tracking-[0.3em] text-[10px] mt-8">Synchronizing Kitchen Core</p>
+                        </div>
+                    ) : (
+                        <div className="animate-in fade-in slide-in-from-bottom-8 duration-1000">
+                            {activeTab === 'orders' && <KitchenPipeline orders={orders} updateStatus={updateStatus} />}
+                            {activeTab === 'menu' && (
+                                <div className="bg-white rounded-[3rem] border border-slate-200 shadow-sm p-10">
+                                    <ProductManager />
+                                </div>
+                            )}
+                            {activeTab === 'settings' && (
+                                <div className="max-w-4xl">
+                                    <VendorSettings />
+                                </div>
+                            )}
+                            {activeTab === 'reviews' && (
+                                <div className="space-y-8">
+                                    <h3 className="text-3xl font-black text-slate-900 tracking-tight">Customer Voice</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        {reviews.map((review, i) => (
+                                            <div key={i} className="bg-white p-8 rounded-[3rem] border border-slate-200 shadow-sm relative overflow-hidden group hover:scale-[1.02] transition-all">
+                                                <div className="flex items-center gap-4 mb-6">
+                                                    <div className="w-12 h-12 bg-orange-50 text-orange-500 rounded-2xl flex items-center justify-center font-black">
+                                                        {review.rating}.0
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-black text-slate-900">{review.user?.name || 'Anonymous'}</p>
+                                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{new Date(review.createdAt).toLocaleDateString()}</p>
+                                                    </div>
+                                                </div>
+                                                <p className="text-slate-600 font-medium italic leading-relaxed">"{review.comment}"</p>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
                             )}
                         </div>
-
-                        {/* Orders List */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {orderSubTab === 'active' ? (
-                                activeOrders.length === 0 ? (
-                                    <div className="col-span-full py-16 bg-white rounded-3xl border border-gray-100 shadow-sm text-center">
-                                        <FaClipboardList className="text-6xl text-gray-200 mx-auto mb-4" />
-                                        <h3 className="text-xl font-bold text-gray-700">No active orders right now</h3>
-                                        <p className="text-gray-500">When customers place orders, they will appear here.</p>
-                                    </div>
-                                ) : (
-                                    activeOrders.map((order, index) => (
-                                        <div key={order._id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col animate-fade-in-up" style={{ animationDelay: `${index * 0.05}s` }}>
-                                            <div className="p-5 border-b border-gray-50 flex justify-between items-start bg-gray-50/50">
-                                                <div>
-                                                    <span className="text-xs font-bold text-gray-500 uppercase">Order ID</span>
-                                                    <h4 className="font-mono font-bold text-gray-900">#{order._id.substring(0, 6).toUpperCase()}</h4>
-                                                </div>
-                                                <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${getStatusColor(order.status)}`}>
-                                                    {order.status}
-                                                </span>
-                                            </div>
-                                            
-                                            <div className="p-5 flex-1">
-                                                <p className="mb-4 text-sm text-gray-600 border-b border-gray-100 pb-4">
-                                                    <span className="font-bold text-gray-900">Customer:</span> {order.user?.name || 'Guest'}
-                                                </p>
-                                                
-                                                <div className="space-y-2 mb-4">
-                                                    {order.items.map((item, idx) => (
-                                                        <div key={idx} className="flex justify-between text-sm">
-                                                            <span className="font-medium text-gray-800"><span className="text-orange-500 font-bold">{item.quantity}x</span> {item.name}</span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                                
-                                                <div className="pt-4 border-t border-gray-100 flex justify-between items-center mt-auto">
-                                                    <span className="font-bold text-gray-500 text-sm">Total</span>
-                                                    <span className="font-extrabold text-lg text-gray-900">{order.totalAmount} ETB</span>
-                                                </div>
-                                            </div>
-                                            
-                                            <div className="p-4 bg-gray-50 border-t border-gray-100 gap-2 flex flex-col sm:flex-row">
-                                                {(order.status === 'pending' || order.status === 'confirmed') && (
-                                                    <button 
-                                                        onClick={() => updateStatus(order._id, 'preparing')} 
-                                                        className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2.5 px-4 rounded-xl transition-colors shadow-sm text-sm"
-                                                    >
-                                                        Start Preparing
-                                                    </button>
-                                                )}
-                                                {order.status === 'preparing' && (
-                                                    <button 
-                                                        onClick={() => updateStatus(order._id, 'ready')} 
-                                                        className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2.5 px-4 rounded-xl transition-colors shadow-sm text-sm"
-                                                    >
-                                                        Mark Ready
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))
-                                )
-                            ) : (
-                                historyOrders.length === 0 ? (
-                                    <div className="col-span-full py-16 bg-white rounded-3xl border border-gray-100 shadow-sm text-center">
-                                        <FaHistory className="text-6xl text-gray-200 mx-auto mb-4" />
-                                        <h3 className="text-xl font-bold text-gray-700">No order history</h3>
-                                    </div>
-                                ) : (
-                                    historyOrders.map((order, index) => (
-                                        <div key={order._id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col opacity-80 hover:opacity-100 transition-opacity">
-                                            <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                                                <h4 className="font-mono font-bold text-gray-600 text-sm">#{order._id.substring(0, 6).toUpperCase()}</h4>
-                                                <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border ${getStatusColor(order.status)}`}>
-                                                    {order.status}
-                                                </span>
-                                            </div>
-                                            <div className="p-4 text-sm flex-1">
-                                                <p className="mb-2"><span className="font-bold text-gray-700">Customer:</span> {order.user?.name || 'Guest'}</p>
-                                                <p className="mb-3 text-gray-500 text-xs">{new Date(order.updatedAt).toLocaleString()}</p>
-                                                <div className="pt-3 border-t border-gray-100 flex justify-between items-center mt-auto">
-                                                    <span className="font-bold text-gray-500">Total</span>
-                                                    <span className="font-bold text-gray-900">{order.totalAmount} ETB</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))
-                                )
-                            )}
-                        </div>
-                    </div>
-                ) : view === 'products' ? (
-                    <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 md:p-8 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-                        <ProductManager />
-                    </div>
-                ) : view === 'settings' ? (
-                    <div className="animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-                        <VendorSettings />
-                    </div>
-                ) : (
-                    <div className="space-y-6 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-                        {/* Review Stats */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                            <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center">
-                                <h3 className="text-gray-500 font-bold uppercase text-xs tracking-widest mb-2">Average Rating</h3>
-                                <p className="text-6xl font-extrabold text-gray-900 font-display flex items-baseline gap-2">
-                                    {vendor?.rating || '0.0'} <span className="text-2xl text-yellow-400"><FaStar /></span>
-                                </p>
-                                <p className="text-gray-400 mt-2 font-medium">Based on {vendor?.numReviews || 0} reviews</p>
-                            </div>
-                            <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center">
-                                <h3 className="text-gray-500 font-bold uppercase text-xs tracking-widest mb-2">Customer Feedback</h3>
-                                <p className="text-6xl font-extrabold text-gray-900 font-display">
-                                    {reviews.length}
-                                </p>
-                                <p className="text-gray-400 mt-2 font-medium">Total comments received</p>
-                            </div>
-                        </div>
-
-                        {/* Reviews List */}
-                        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-                            <div className="p-6 border-b border-gray-50">
-                                <h3 className="font-bold text-gray-900 text-lg">All Customer Reviews</h3>
-                            </div>
-                            <div className="divide-y divide-gray-100">
-                                {reviews.length === 0 ? (
-                                    <div className="p-20 text-center text-gray-400">
-                                        <FaStar className="text-5xl mx-auto mb-4 opacity-20" />
-                                        <p>No reviews yet. Deliver great food to get your first rating!</p>
-                                    </div>
-                                ) : (
-                                    reviews.map((review) => (
-                                        <div key={review._id} className="p-6 hover:bg-gray-50 transition-colors">
-                                            <div className="flex justify-between items-start mb-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center text-orange-500 font-bold">
-                                                        {review.user?.avatarUrl ? (
-                                                            <img src={review.user.avatarUrl} alt="avatar" className="w-full h-full rounded-full object-cover" />
-                                                        ) : (
-                                                            <FaUser />
-                                                        )}
-                                                    </div>
-                                                    <div>
-                                                        <h4 className="font-bold text-gray-900">{review.user?.name || 'Anonymous Customer'}</h4>
-                                                        <p className="text-xs text-gray-400">{new Date(review.createdAt).toLocaleDateString()}</p>
-                                                    </div>
-                                                </div>
-                                                <div className="flex text-yellow-400 gap-0.5">
-                                                    {[...Array(5)].map((_, i) => (
-                                                        <FaStar key={i} className={i < review.rating ? 'fill-current' : 'text-gray-200'} />
-                                                    ))}
-                                                </div>
-                                            </div>
-                                            <p className="text-gray-700 leading-relaxed italic">"{review.comment}"</p>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </div>
+                    )}
+                </div>
+            </main>
         </div>
     );
 };
