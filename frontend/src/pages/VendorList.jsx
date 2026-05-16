@@ -160,9 +160,9 @@ const VendorList = () => {
                                     <span className={`${vendor.isOpen ? 'bg-green-500' : 'bg-red-500'} text-white text-xs font-bold px-3 py-1 rounded-full shadow-md`}>
                                         {vendor.isOpen ? 'OPEN NOW' : 'CLOSED'}
                                     </span>
-                                    {vendor.rating && (
-                                        <span className="bg-white text-yellow-500 px-2 py-1 rounded-full text-xs font-bold flex items-center shadow-md">
-                                            <FaStar className="mr-1" /> {vendor.rating}
+                                    {vendor.rating > 0 && (
+                                        <span className="bg-white text-yellow-500 px-3 py-1.5 rounded-full text-xs font-bold flex items-center shadow-md border border-gray-100">
+                                            <FaStar className="mr-1" /> {vendor.rating} <span className="text-gray-400 ml-1 font-medium">({vendor.numReviews || 0})</span>
                                         </span>
                                     )}
                                 </div>

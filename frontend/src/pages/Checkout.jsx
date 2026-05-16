@@ -5,6 +5,14 @@ import AuthContext from '../context/AuthContext';
 import ToastContext from '../context/ToastContext';
 import { useLocale } from '../context/LocaleContext.jsx';
 import api from '../utils/api';
+import { 
+    FaArrowLeft, 
+    FaShoppingCart, 
+    FaMapMarkerAlt, 
+    FaMoneyBillWave, 
+    FaCreditCard, 
+    FaMotorcycle 
+} from 'react-icons/fa';
 
 const DELIVERY_FEE_ETB = 50;
 
@@ -26,13 +34,34 @@ const Checkout = () => {
     const navigate = useNavigate();
 
     const [submitting, setSubmitting] = useState(false);
+    const [couponCode, setCouponCode] = useState('');
+    const [coupon, setCoupon] = useState(null);
+    const [validatingCoupon, setValidatingCoupon] = useState(false);
 
     const totalWithDelivery = useMemo(
-        () => totalPrice + (cartItems.length ? DELIVERY_FEE_ETB : 0),
-        [totalPrice, cartItems.length]
+        () => totalPrice + (cartItems.length ? DELIVERY_FEE_ETB : 0) - (coupon?.discount || 0),
+        [totalPrice, cartItems.length, coupon]
     );
 
     const canCheckout = cartItems.length > 0 && !submitting;
+
+    const handleApplyCoupon = async () => {
+        if (!couponCode.trim()) return;
+        setValidatingCoupon(true);
+        try {
+            const { data } = await api.post('/coupons/validate', {
+                code: couponCode,
+                orderAmount: totalPrice
+            });
+            setCoupon(data);
+            addToast('Coupon applied successfully!', 'success');
+        } catch (error) {
+            addToast(error.response?.data?.message || 'Invalid coupon', 'error');
+            setCoupon(null);
+        } finally {
+            setValidatingCoupon(false);
+        }
+    };
 
     const handlePlaceOrder = async () => {
         if (!canCheckout) return;
@@ -80,6 +109,8 @@ const Checkout = () => {
                 paymentMethod,
                 contactPhone: deliveryDetails.phone || '',
                 notes,
+                couponCode: coupon?.code,
+                discountAmount: coupon?.discount || 0,
             };
 
             const { data: orderResponse } = await api.post('/deliveries', orderData);
@@ -109,15 +140,6 @@ const Checkout = () => {
     };
 
     return (
-        <div className="container" style={{ maxWidth: 980, marginTop: 'var(--space-10)' }}>
-            <div className="flex justify-between items-center" style={{ gap: 'var(--space-4)', flexWrap: 'wrap' }}>
-                <div>
-                    <h2 className="text-3xl font-bold" style={{ margin: 0 }}>Checkout</h2>
-                    <p className="text-light" style={{ marginTop: 'var(--space-2)' }}>
-                        Confirm your order and delivery details.
-                    </p>
-                </div>
-                <Link to="/vendors" className="btn btn-outline">Continue Shopping</Link>
         <div className="bg-gray-50 min-h-screen pt-32 pb-20">
             <div className="container mx-auto px-4 max-w-6xl">
                 
@@ -295,6 +317,35 @@ const Checkout = () => {
                                         </div>
                                     </div>
                                     
+                                    <div className="border-t border-gray-100 pt-4 mb-4">
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">Have a coupon?</label>
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                className="flex-1 px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 uppercase font-bold"
+                                                placeholder="Enter Code"
+                                                value={couponCode}
+                                                onChange={(e) => setCouponCode(e.target.value)}
+                                                disabled={validatingCoupon || !!coupon}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={coupon ? () => { setCoupon(null); setCouponCode(''); } : handleApplyCoupon}
+                                                className={`px-4 py-2 rounded-xl font-bold transition-all ${coupon ? 'bg-red-50 text-red-500 hover:bg-red-100' : 'bg-gray-900 text-white hover:bg-black'}`}
+                                                disabled={validatingCoupon}
+                                            >
+                                                {validatingCoupon ? '...' : (coupon ? 'Remove' : 'Apply')}
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {coupon && (
+                                        <div className="flex justify-between items-center text-green-600 font-bold text-sm mb-6 bg-green-50 p-3 rounded-xl border border-green-100">
+                                            <span>Discount Applied ({coupon.code})</span>
+                                            <span>-{coupon.discount} ETB</span>
+                                        </div>
+                                    )}
+
                                     <div className="border-t border-gray-100 pt-4 mb-8">
                                         <div className="flex justify-between items-center">
                                             <span className="text-lg font-bold text-gray-900">Total</span>

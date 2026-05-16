@@ -4,13 +4,24 @@ import { FaArrowLeft, FaPhoneAlt, FaMapMarkerAlt, FaMotorcycle, FaCheckCircle, F
 import api from '../utils/api';
 import MapView from '../components/MapView';
 import SocketContext from '../context/SocketContext';
+import ToastContext from '../context/ToastContext';
+import { FaStar } from 'react-icons/fa';
 
 const OrderTracking = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const [order, setOrder] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [driverLocation, setDriverLocation] = useState(null);
     const socket = useContext(SocketContext);
+    const { addToast } = useContext(ToastContext);
+    
+    // Review State
+    const [showReviewForm, setShowReviewForm] = useState(false);
+    const [rating, setRating] = useState(5);
+    const [comment, setComment] = useState('');
+    const [submittingReview, setSubmittingReview] = useState(false);
+    const [isReviewed, setIsReviewed] = useState(false);
 
     useEffect(() => {
         fetchOrder();
@@ -20,23 +31,66 @@ const OrderTracking = () => {
             socket.on('order_status_updated', (updatedOrder) => {
                 if (updatedOrder._id === id) {
                     setOrder(updatedOrder);
+                    if (updatedOrder.status === 'delivered') {
+                        setShowReviewForm(true);
+                    }
+                }
+            });
+            socket.on('driver_location_changed', (data) => {
+                if (data.orderId === id) {
+                    setDriverLocation(data.coordinates);
                 }
             });
         }
 
         return () => {
-            if (socket) socket.off('order_status_updated');
+            if (socket) {
+                socket.off('order_status_updated');
+                socket.off('driver_location_changed');
+            }
         };
     }, [id, socket]);
+
+    useEffect(() => {
+        if (order?.status === 'delivered') {
+            setShowReviewForm(true);
+        }
+    }, [order]);
 
     const fetchOrder = async () => {
         try {
             const { data } = await api.get(`/deliveries/${id}`);
             setOrder(data);
+            // Check if already reviewed
+            const { data: reviews } = await api.get(`/reviews/vendor/${data.vendor._id || data.vendor}`);
+            const myReview = reviews.find(r => r.order === id);
+            if (myReview) {
+                setIsReviewed(true);
+                setShowReviewForm(false);
+            }
         } catch (error) {
             console.error('Error fetching order:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const submitReview = async (e) => {
+        e.preventDefault();
+        setSubmittingReview(true);
+        try {
+            await api.post('/reviews', {
+                orderId: id,
+                rating,
+                comment
+            });
+            addToast('Thank you for your feedback!', 'success');
+            setIsReviewed(true);
+            setShowReviewForm(false);
+        } catch (error) {
+            addToast(error.response?.data?.message || 'Failed to submit review', 'error');
+        } finally {
+            setSubmittingReview(false);
         }
     };
 
@@ -110,6 +164,7 @@ const OrderTracking = () => {
                         <MapView
                             pickup={order.pickupLocation}
                             dropoff={order.dropoffLocation}
+                            driverLocation={driverLocation}
                         />
                         {/* Overlay Status Badge */}
                         <div className="absolute top-4 left-4 right-4 md:right-auto md:w-80 bg-white/90 backdrop-blur-md p-4 rounded-2xl shadow-lg border border-white/50 z-10">
@@ -209,6 +264,55 @@ const OrderTracking = () => {
                                 </div>
                             </div>
                         </div>
+
+                        {/* Review Form Card */}
+                        {showReviewForm && !isReviewed && (
+                            <div className="bg-white rounded-3xl shadow-xl border-2 border-orange-100 overflow-hidden animate-bounce-subtle mt-6">
+                                <div className="bg-orange-500 px-6 py-4">
+                                    <h3 className="text-lg font-bold text-white">Rate Your Experience</h3>
+                                </div>
+                                <form onSubmit={submitReview} className="p-6">
+                                    <div className="flex justify-center gap-2 mb-6">
+                                        {[1, 2, 3, 4, 5].map((star) => (
+                                            <button
+                                                key={star}
+                                                type="button"
+                                                onClick={() => setRating(star)}
+                                                className={`text-3xl transition-transform hover:scale-125 ${rating >= star ? 'text-yellow-400' : 'text-gray-200'}`}
+                                            >
+                                                <FaStar />
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <textarea
+                                        value={comment}
+                                        onChange={(e) => setComment(e.target.value)}
+                                        placeholder="Tell us about your food and delivery..."
+                                        className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-orange-500 h-24 resize-none mb-4"
+                                        required
+                                    />
+                                    <button
+                                        type="submit"
+                                        disabled={submittingReview}
+                                        className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3.5 rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2"
+                                    >
+                                        {submittingReview ? <FaSpinner className="animate-spin" /> : 'Submit Review'}
+                                    </button>
+                                </form>
+                            </div>
+                        )}
+
+                        {isReviewed && (
+                            <div className="bg-green-50 rounded-3xl p-6 border border-green-100 flex items-center gap-4 mt-6">
+                                <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-xl">
+                                    <FaCheckCircle />
+                                </div>
+                                <div>
+                                    <h4 className="font-bold text-green-800">Review Submitted</h4>
+                                    <p className="text-sm text-green-600">Thanks for helping us improve!</p>
+                                </div>
+                            </div>
+                        )}
 
                     </div>
                 </div>

@@ -2,17 +2,22 @@ import { useState, useEffect, useContext } from 'react';
 import api from '../utils/api';
 import SocketContext from '../context/SocketContext';
 import ProductManager from '../components/ProductManager';
-import { FaBoxOpen, FaClipboardList, FaCheckCircle, FaMoneyBillWave, FaClock, FaCheck, FaTimes } from 'react-icons/fa';
+import VendorSettings from '../components/VendorSettings';
+import { FaBoxOpen, FaClipboardList, FaCheckCircle, FaMoneyBillWave, FaClock, FaCheck, FaTimes, FaCog, FaHistory, FaStar, FaUser } from 'react-icons/fa';
 
 const VendorDashboard = () => {
     const [orders, setOrders] = useState([]);
-    const [view, setView] = useState('orders'); // 'orders' or 'products'
+    const [view, setView] = useState('orders'); // 'orders', 'products', 'settings', or 'reviews'
+    const [reviews, setReviews] = useState([]);
+    const [vendor, setVendor] = useState(null);
     const socket = useContext(SocketContext);
 
     useEffect(() => {
         // Only fetch orders if in orders view (optional optimization, but good practice)
         if (view === 'orders') {
             fetchOrders();
+        } else if (view === 'reviews') {
+            fetchReviews();
         }
     }, [view]);
 
@@ -39,6 +44,18 @@ const VendorDashboard = () => {
             setOrders(sorted);
         } catch (error) {
             console.error('Error fetching orders:', error);
+        }
+    };
+
+    const fetchReviews = async () => {
+        try {
+            // First get vendor info to get the ID
+            const { data: profile } = await api.get('/profile/vendor');
+            setVendor(profile);
+            const { data: revs } = await api.get(`/reviews/vendor/${profile._id}`);
+            setReviews(revs);
+        } catch (error) {
+            console.error('Error fetching reviews:', error);
         }
     };
 
@@ -98,6 +115,20 @@ const VendorDashboard = () => {
                     >
                         <span className="flex items-center gap-2"><FaBoxOpen /> Menu & Products</span>
                         {view === 'products' && <div className="absolute bottom-0 left-0 w-full h-1 bg-orange-500 rounded-t-lg"></div>}
+                    </button>
+                    <button
+                        className={`pb-4 px-4 text-lg font-bold transition-all relative ${view === 'settings' ? 'text-orange-500' : 'text-gray-500 hover:text-gray-700'}`}
+                        onClick={() => setView('settings')}
+                    >
+                        <span className="flex items-center gap-2"><FaCog /> Restaurant Settings</span>
+                        {view === 'settings' && <div className="absolute bottom-0 left-0 w-full h-1 bg-orange-500 rounded-t-lg"></div>}
+                    </button>
+                    <button
+                        className={`pb-4 px-4 text-lg font-bold transition-all relative ${view === 'reviews' ? 'text-orange-500' : 'text-gray-500 hover:text-gray-700'}`}
+                        onClick={() => setView('reviews')}
+                    >
+                        <span className="flex items-center gap-2"><FaStar /> Reviews</span>
+                        {view === 'reviews' && <div className="absolute bottom-0 left-0 w-full h-1 bg-orange-500 rounded-t-lg"></div>}
                     </button>
                 </div>
 
@@ -225,9 +256,74 @@ const VendorDashboard = () => {
                             )}
                         </div>
                     </div>
-                ) : (
+                ) : view === 'products' ? (
                     <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 md:p-8 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
                         <ProductManager />
+                    </div>
+                ) : view === 'settings' ? (
+                    <div className="animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+                        <VendorSettings />
+                    </div>
+                ) : (
+                    <div className="space-y-6 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+                        {/* Review Stats */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                            <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center">
+                                <h3 className="text-gray-500 font-bold uppercase text-xs tracking-widest mb-2">Average Rating</h3>
+                                <p className="text-6xl font-extrabold text-gray-900 font-display flex items-baseline gap-2">
+                                    {vendor?.rating || '0.0'} <span className="text-2xl text-yellow-400"><FaStar /></span>
+                                </p>
+                                <p className="text-gray-400 mt-2 font-medium">Based on {vendor?.numReviews || 0} reviews</p>
+                            </div>
+                            <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center">
+                                <h3 className="text-gray-500 font-bold uppercase text-xs tracking-widest mb-2">Customer Feedback</h3>
+                                <p className="text-6xl font-extrabold text-gray-900 font-display">
+                                    {reviews.length}
+                                </p>
+                                <p className="text-gray-400 mt-2 font-medium">Total comments received</p>
+                            </div>
+                        </div>
+
+                        {/* Reviews List */}
+                        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                            <div className="p-6 border-b border-gray-50">
+                                <h3 className="font-bold text-gray-900 text-lg">All Customer Reviews</h3>
+                            </div>
+                            <div className="divide-y divide-gray-100">
+                                {reviews.length === 0 ? (
+                                    <div className="p-20 text-center text-gray-400">
+                                        <FaStar className="text-5xl mx-auto mb-4 opacity-20" />
+                                        <p>No reviews yet. Deliver great food to get your first rating!</p>
+                                    </div>
+                                ) : (
+                                    reviews.map((review) => (
+                                        <div key={review._id} className="p-6 hover:bg-gray-50 transition-colors">
+                                            <div className="flex justify-between items-start mb-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center text-orange-500 font-bold">
+                                                        {review.user?.avatarUrl ? (
+                                                            <img src={review.user.avatarUrl} alt="avatar" className="w-full h-full rounded-full object-cover" />
+                                                        ) : (
+                                                            <FaUser />
+                                                        )}
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="font-bold text-gray-900">{review.user?.name || 'Anonymous Customer'}</h4>
+                                                        <p className="text-xs text-gray-400">{new Date(review.createdAt).toLocaleDateString()}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex text-yellow-400 gap-0.5">
+                                                    {[...Array(5)].map((_, i) => (
+                                                        <FaStar key={i} className={i < review.rating ? 'fill-current' : 'text-gray-200'} />
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <p className="text-gray-700 leading-relaxed italic">"{review.comment}"</p>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
                     </div>
                 )}
             </div>
