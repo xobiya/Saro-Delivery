@@ -112,6 +112,9 @@ app.use('/api/deliveries', require('./routes/orderRoutes'));
 app.use('/api/vendors', require('./routes/vendorRoutes'));
 app.use('/api/products', require('./routes/productRoutes'));
 app.use('/api/payment', require('./routes/paymentRoutes'));
+app.use('/api/reviews', require('./routes/reviewRoutes'));
+app.use('/api/coupons', require('./routes/couponRoutes'));
+app.use('/api/admin', require('./routes/adminRoutes'));
 
 app.get('/', (req, res) => {
   res.send('Saro Delivery API is running...');
@@ -149,6 +152,14 @@ io.on('connection', (socket) => {
       socketId: socket.id,
       orderId
     });
+  });
+
+  socket.on('driver_location_update', (data) => {
+    // data = { orderId, coordinates: { lat, lng } }
+    const { orderId, coordinates } = data;
+    if (orderId && coordinates) {
+      io.to(orderId).emit('driver_location_changed', { orderId, coordinates });
+    }
   });
 
   socket.on('disconnect', () => {

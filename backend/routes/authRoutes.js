@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { registerUser, loginUser, getUsers, getMe } = require('../controllers/authController');
+const { registerUser, loginUser, getUsers, getMe, updateUser, deleteUser } = require('../controllers/authController');
 const { protect, admin } = require('../middleware/authMiddleware');
 const passport = require('passport');
 const { getFrontendUrl } = require('../config/env');
@@ -91,6 +91,7 @@ router.post('/register', validate(registerSchema), registerUser);
  */
 router.post('/login', validate(loginSchema), loginUser);
 router.get('/users', protect, admin, getUsers);
+router.route('/users/:id').put(protect, admin, updateUser).delete(protect, admin, deleteUser);
 
 router.get('/me', protect, getMe);
 

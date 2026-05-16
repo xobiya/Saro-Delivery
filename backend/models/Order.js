@@ -67,6 +67,13 @@ const orderSchema = mongoose.Schema({
     },
     notes: {
         type: String,
+    },
+    couponCode: {
+        type: String,
+    },
+    discountAmount: {
+        type: Number,
+        default: 0,
     }
 }, {
     timestamps: true,

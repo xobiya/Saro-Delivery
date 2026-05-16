@@ -13,7 +13,7 @@ const productSchema = mongoose.Schema({
     description: {
         type: String,
     },
-    price: {
+    basePrice: {
         type: Number,
         required: [true, 'Please add a price'],
     },
@@ -21,15 +21,28 @@ const productSchema = mongoose.Schema({
         type: String,
     },
     category: {
-        type: String, // e.g., "Main Dish", "Drink"
+        type: String, // e.g., "Main Dish", "Injera Combo", "Fast Food"
     },
-    options: [{
-        name: { type: String }, // e.g., "Extra Cheese"
-        priceModifier: { type: Number, default: 0 }
+    variants: [{
+        name: { type: String, required: true }, // e.g., "Large", "Combo 1"
+        price: { type: Number, required: true }
+    }],
+    addOns: [{
+        name: { type: String, required: true }, // e.g., "Extra Ayib", "Soft Drink"
+        price: { type: Number, default: 0 }
     }],
     isAvailable: {
         type: Boolean,
         default: true,
+    },
+    isEthiopian: {
+        type: Boolean,
+        default: false
+    },
+    tags: [String], // e.g. "Spicy", "Vegan"
+    nutrition: {
+        calories: Number,
+        allergens: [String]
     }
 }, {
     timestamps: true,

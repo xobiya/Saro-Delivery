@@ -1,6 +1,7 @@
 const asyncHandler = require('express-async-handler');
 const Order = require('../models/Order');
 const Vendor = require('../models/Vendor');
+const Coupon = require('../models/Coupon');
 
 // @desc    Create new order
 // @route   POST /api/deliveries
@@ -15,6 +16,8 @@ const createOrder = asyncHandler(async (req, res) => {
         vendorId, // Explicitly passed from frontend now
         paymentMethod,
         contactPhone,
+        couponCode,
+        discountAmount,
     } = req.body;
 
     if (items && items.length === 0) {
@@ -36,9 +39,18 @@ const createOrder = asyncHandler(async (req, res) => {
             paymentMethod,
             contactPhone: contactPhone || normalizedDropoff.phone || req.user.phone,
             notes,
+            couponCode,
+            discountAmount: discountAmount || 0,
         });
 
         const createdOrder = await order.save();
+
+        if (couponCode) {
+            await Coupon.findOneAndUpdate(
+                { code: couponCode.toUpperCase() },
+                { $inc: { usedCount: 1 } }
+            );
+        }
 
         // Notify Vendors/Drivers (Broadcast generally or to specific rooms if implemented)
         // For simplicity, we can emit a global 'orders_changed' event or just rely on polling for lists

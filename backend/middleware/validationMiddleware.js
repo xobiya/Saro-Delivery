@@ -71,6 +71,8 @@ const orderSchema = Joi.object({
     contactPhone: Joi.string().pattern(/^[0-9+\s-]+$/).allow('').optional(),
     notes: Joi.string().allow('').optional(),
     vendorId: Joi.string().optional(),
+    couponCode: Joi.string().allow('').optional(),
+    discountAmount: Joi.number().min(0).optional(),
 });
 
 const updateOrderStatusSchema = Joi.object({

@@ -134,4 +134,56 @@ const getMe = async (req, res) => {
     }
 };
 
-module.exports = { registerUser, loginUser, getUsers, getMe };
+// @desc    Update user
+// @route   PUT /api/auth/users/:id
+// @access  Private/Admin
+const updateUser = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+        if (user) {
+            user.name = req.body.name || user.name;
+            user.email = req.body.email || user.email;
+            user.role = req.body.role || user.role;
+            if (req.body.active !== undefined) {
+                user.active = req.body.active;
+            }
+            if (req.body.password) {
+                user.password = req.body.password;
+            }
+
+            const updatedUser = await user.save();
+            res.json({
+                _id: updatedUser._id,
+                name: updatedUser.name,
+                email: updatedUser.email,
+                role: updatedUser.role,
+                active: updatedUser.active
+            });
+        } else {
+            res.status(404).json({ message: 'User not found' });
+        }
+    } catch (error) {
+        logger.error('Failed to update user', { userId: req.params.id, error: error.message });
+        res.status(500).json({ message: 'Failed to update user' });
+    }
+};
+
+// @desc    Delete user
+// @route   DELETE /api/auth/users/:id
+// @access  Private/Admin
+const deleteUser = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+        if (user) {
+            await user.deleteOne();
+            res.json({ message: 'User removed' });
+        } else {
+            res.status(404).json({ message: 'User not found' });
+        }
+    } catch (error) {
+        logger.error('Failed to delete user', { userId: req.params.id, error: error.message });
+        res.status(500).json({ message: 'Failed to delete user' });
+    }
+};
+
+module.exports = { registerUser, loginUser, getUsers, getMe, updateUser, deleteUser };
