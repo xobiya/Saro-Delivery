@@ -196,12 +196,18 @@ const PaymentReturn = () => {
     const paymentParam = searchParams.get('payment');   // set by backend verify redirect
     const orderId      = searchParams.get('order');      // set by both paths
     const txRef        = searchParams.get('tx_ref') || searchParams.get('trx_ref');     // set by Chapa's return_url
+    const amountParam  = searchParams.get('amount');
+    const paymentStatusParam = searchParams.get('paymentStatus');
 
-    // If we got a direct payment state from the backend redirect — use it immediately
-    // Otherwise start in 'verifying' mode and poll our backend
-    const needsVerification = !paymentParam && (orderId || txRef);
+    // If amount is present in redirect, treat the redirect as authoritative and avoid unauthenticated API calls
+    const hasRedirectAmount = !!amountParam;
 
-    const [state,      setState]      = useState(paymentParam || (needsVerification ? 'verifying' : 'error'));
+    // Decide initial state: prefer explicit amount/paymentStatus, then paymentParam, then verifying (if we have order/txRef), otherwise error
+    const initialState = hasRedirectAmount
+        ? (paymentStatusParam === 'completed' ? 'success' : (paymentStatusParam === 'failed' ? 'failed' : 'verifying'))
+        : (paymentParam || ((orderId || txRef) ? 'verifying' : 'error'));
+
+    const [state,      setState]      = useState(initialState);
     const [statusData, setStatusData] = useState(null);
     const [attempts,   setAttempts]   = useState(0);
     const MAX_ATTEMPTS = 8;   // poll up to 8 times (≈ 16 seconds)
@@ -215,9 +221,25 @@ const PaymentReturn = () => {
 
     const hasTriggeredVerify = useRef(false);
 
+    // If backend/chapa included amount and paymentStatus in the redirect URL, use them immediately
+    useEffect(() => {
+        if (!hasRedirectAmount) return;
+        setStatusData({ totalAmount: Number(amountParam), paymentStatus: paymentStatusParam || (paymentParam === 'success' ? 'completed' : 'pending'), orderStatus: paymentParam === 'success' ? 'confirmed' : 'pending', dropoffLocation: {} });
+        // Do not attempt frontend verification or polling when we already have authoritative redirect data
+        // if paymentStatusParam indicates completed, show success; if pending, show verifying UI
+        if (paymentStatusParam === 'completed' || paymentParam === 'success') {
+            setState('success');
+        } else if (paymentStatusParam === 'failed' || paymentParam === 'failed') {
+            setState('failed');
+        } else {
+            setState('verifying');
+        }
+    }, [hasRedirectAmount]);
+
     /* ── 1. One-time verification trigger on mount ── */
     useEffect(() => {
         if (!txRef || !orderId || hasTriggeredVerify.current) return;
+        if (hasRedirectAmount) return; // skip frontend verification if backend included amount/status
         hasTriggeredVerify.current = true;
 
         const triggerVerification = async () => {
@@ -253,6 +275,7 @@ const PaymentReturn = () => {
     /* ── 2. Independent database polling loop ── */
     useEffect(() => {
         if (state !== 'verifying') return;
+        if (hasRedirectAmount) return; // avoid polling protected endpoint when we already have redirect data
         if (attempts >= MAX_ATTEMPTS) {
             // Timed out — give user a useful message based on order data
             setState(statusData?.paymentStatus === 'completed' ? 'success' : 'error');
@@ -286,6 +309,15 @@ const PaymentReturn = () => {
     /* ── If paymentParam was given directly, still load order details ── */
     useEffect(() => {
         if (paymentParam && orderId) {
+            // If backend included amount/paymentStatus in query params, use them to display details
+            const amountParam = searchParams.get('amount');
+            const paymentStatusParam = searchParams.get('paymentStatus');
+            if (amountParam) {
+                setStatusData({ totalAmount: Number(amountParam), paymentStatus: paymentStatusParam || (paymentParam === 'success' ? 'completed' : 'pending'), orderStatus: paymentParam === 'success' ? 'confirmed' : 'pending', dropoffLocation: {} });
+                return;
+            }
+
+            // Fallback: try to fetch status from API (may require auth)
             api.get(`/payment/status/${orderId}`)
                 .then(({ data }) => setStatusData(data))
                 .catch(() => {});

@@ -146,7 +146,7 @@ const verifyPayment = asyncHandler(async (req, res) => {
 
             if (!order) {
                 logger.error('Order not found for payment verification', { orderId, txRef: tx_ref });
-                return res.redirect(`${getFrontendUrl()}/payment/return?payment=order_not_found`);
+                return res.redirect(`${getFrontendUrl()}/payment/return?payment=order_not_found&order=${orderId}`);
             }
 
             // CRITICAL: Verify amount matches
@@ -157,14 +157,14 @@ const verifyPayment = asyncHandler(async (req, res) => {
                     paidAmount,
                     txRef: tx_ref
                 });
-                return res.redirect(`${getFrontendUrl()}/payment/return?payment=amount_mismatch`);
+                return res.redirect(`${getFrontendUrl()}/payment/return?payment=amount_mismatch&order=${orderId}&amount=${paidAmount}&paymentStatus=${response.data.data.status}`);
             }
 
             // Check if already processed
             if (order.paymentStatus === 'completed') {
                 logger.warn('Order already marked as paid', { orderId, txRef: tx_ref });
                 processedPayments.add(id);
-                return res.redirect(`${getFrontendUrl()}/payment/return?payment=already_paid&order=${orderId}`);
+                return res.redirect(`${getFrontendUrl()}/payment/return?payment=already_paid&order=${orderId}&amount=${paidAmount}&paymentStatus=completed`);
             }
 
             // Update order
@@ -185,7 +185,7 @@ const verifyPayment = asyncHandler(async (req, res) => {
                 txRef: tx_ref
             });
 
-            return res.redirect(`${getFrontendUrl()}/payment/return?payment=success&order=${orderId}`);
+            return res.redirect(`${getFrontendUrl()}/payment/return?payment=success&order=${orderId}&amount=${paidAmount}&paymentStatus=completed`);
         }
 
         logger.warn('Payment verification failed - not successful', {
@@ -194,14 +194,14 @@ const verifyPayment = asyncHandler(async (req, res) => {
             dataStatus: response.data.data?.status
         });
 
-        res.redirect(`${getFrontendUrl()}/payment/return?payment=failed`);
+        res.redirect(`${getFrontendUrl()}/payment/return?payment=failed&order=${response.data.data?.tx_ref ? response.data.data.tx_ref.split('-')[1] : ''}`);
 
     } catch (error) {
         logger.error('Chapa payment verification error', {
             txRef: id,
             error: error.response ? error.response.data : error.message
         });
-        res.redirect(`${getFrontendUrl()}/payment/return?payment=error`);
+        res.redirect(`${getFrontendUrl()}/payment/return?payment=error&order=${id}`);
     }
 });
 

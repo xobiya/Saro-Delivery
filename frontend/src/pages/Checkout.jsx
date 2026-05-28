@@ -1,4 +1,4 @@
-import { useContext, useMemo, useState } from 'react';
+import { useContext, useMemo, useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import CartContext from '../context/CartContext';
 import AuthContext from '../context/AuthContext';
@@ -11,7 +11,8 @@ import {
     FaMapMarkerAlt, 
     FaMoneyBillWave, 
     FaCreditCard, 
-    FaMotorcycle 
+    FaMotorcycle,
+    FaReceipt
 } from 'react-icons/fa';
 
 const DELIVERY_FEE_ETB = 50;
@@ -34,18 +35,45 @@ const Checkout = () => {
     const navigate = useNavigate();
 
     const [submitting, setSubmitting] = useState(false);
+    const [deliveryErrors, setDeliveryErrors] = useState({});
+    const [flowError, setFlowError] = useState('');
     const [couponCode, setCouponCode] = useState('');
     const [coupon, setCoupon] = useState(null);
     const [validatingCoupon, setValidatingCoupon] = useState(false);
 
+    const groupedItems = useMemo(() => {
+        const map = new Map();
+        cartItems.forEach((it) => {
+            const key = it.vendorId || 'unknown';
+            if (!map.has(key)) map.set(key, { vendorId: key, vendorName: it.vendorName || 'Vendor', items: [] });
+            map.get(key).items.push(it);
+        });
+        return Array.from(map.values());
+    }, [cartItems]);
+
+    const orderCount = groupedItems.length;
+    const hasMultipleVendors = orderCount > 1;
+    const discountAmount = hasMultipleVendors ? 0 : (coupon?.discount || 0);
+
     const totalWithDelivery = useMemo(
-        () => totalPrice + (cartItems.length ? DELIVERY_FEE_ETB : 0) - (coupon?.discount || 0),
-        [totalPrice, cartItems.length, coupon]
+        () => totalPrice + (orderCount ? DELIVERY_FEE_ETB * orderCount : 0) - discountAmount,
+        [totalPrice, orderCount, discountAmount]
     );
 
-    const canCheckout = cartItems.length > 0 && !submitting;
+    useEffect(() => {
+        if (hasMultipleVendors && coupon) {
+            setCoupon(null);
+            setCouponCode('');
+        }
+    }, [hasMultipleVendors, coupon]);
+
+    const canCheckout = cartItems.length > 0 && !submitting && Object.keys(deliveryErrors).length === 0 && deliveryDetails.landmark && deliveryDetails.phone && !(hasMultipleVendors && paymentMethod === 'chapa');
 
     const handleApplyCoupon = async () => {
+        if (hasMultipleVendors) {
+            addToast('Coupons apply to a single vendor order. Please split your order first.', 'info');
+            return;
+        }
         if (!couponCode.trim()) return;
         setValidatingCoupon(true);
         try {
@@ -64,19 +92,35 @@ const Checkout = () => {
     };
 
     const handlePlaceOrder = async () => {
-        if (!canCheckout) return;
-
-        const vendorId = cartItems[0]?.vendorId;
-        if (!vendorId) {
-            addToast('Missing vendor info. Please reopen the menu and add items again.', 'error');
-            return;
+        setFlowError('');
+        // Validate locally before submitting
+        const errors = {};
+        if (!deliveryDetails.landmark || !deliveryDetails.landmark.trim()) {
+            errors.landmark = 'Please provide a recognizable landmark for delivery.';
         }
 
         const digits = (deliveryDetails.phone || '').replace(/\D/g, '');
         if (digits.length < 9) {
-            addToast('Please add a valid phone number for delivery.', 'error');
+            errors.phone = 'Please enter a valid phone number (at least 9 digits).';
+        }
+
+        setDeliveryErrors(errors);
+        if (Object.keys(errors).length > 0) return;
+
+        if (!canCheckout) return;
+
+        if (hasMultipleVendors && paymentMethod === 'chapa') {
+            setFlowError('Online payment currently supports one vendor per order. Choose cash or split your order.');
+            addToast('Online payment supports only one vendor per order.', 'warning');
             return;
         }
+
+        if (!groupedItems.every((g) => g.vendorId && g.vendorId !== 'unknown')) {
+            addToast('Missing vendor info. Please reopen the menu and add items again.', 'error');
+            return;
+        }
+
+        // phone already validated above
 
         setSubmitting(true);
 
@@ -89,8 +133,7 @@ const Checkout = () => {
             ]
                 .filter(Boolean)
                 .join(' | ');
-
-            const orderData = {
+            const buildOrderData = (group, groupTotal) => ({
                 pickupLocation: { address: 'Vendor Location' },
                 dropoffLocation: {
                     address: deliveryDetails.address || deliveryDetails.landmark || 'Arba Minch',
@@ -99,30 +142,37 @@ const Checkout = () => {
                     instructions: deliveryDetails.instructions || '',
                     coordinates: { lat: 6.0333, lng: 37.55 },
                 },
-                items: cartItems.map((item) => ({
+                items: group.items.map((item) => ({
                     name: item.name,
                     quantity: item.qty,
                     price: item.price,
                 })),
-                totalAmount: totalWithDelivery,
-                vendorId,
+                totalAmount: groupTotal,
+                vendorId: group.vendorId,
                 paymentMethod,
                 contactPhone: deliveryDetails.phone || '',
                 notes,
                 couponCode: coupon?.code,
-                discountAmount: coupon?.discount || 0,
-            };
+                discountAmount,
+            });
 
-            const { data: orderResponse } = await api.post('/deliveries', orderData);
+            const createdOrders = [];
+            for (const group of groupedItems) {
+                const groupSubtotal = group.items.reduce((sum, item) => sum + item.price * item.qty, 0);
+                const groupTotal = groupSubtotal + DELIVERY_FEE_ETB - discountAmount;
+                const { data: orderResponse } = await api.post('/deliveries', buildOrderData(group, groupTotal));
+                createdOrders.push(orderResponse);
+            }
 
             if (paymentMethod === 'cash') {
-                addToast('Order placed! Pay cash on delivery.', 'success');
+                addToast(`Order${createdOrders.length > 1 ? 's' : ''} placed! Pay cash on delivery.`, 'success');
                 clearCart();
                 navigate('/profile');
                 return;
             }
 
-            const { data: paymentResponse } = await api.post('/payment/chapa', { orderId: orderResponse._id });
+            const primaryOrder = createdOrders[0];
+            const { data: paymentResponse } = await api.post('/payment/chapa', { orderId: primaryOrder._id });
             if (paymentResponse.checkout_url) {
                 window.location.href = paymentResponse.checkout_url;
                 return;
@@ -139,14 +189,26 @@ const Checkout = () => {
         }
     };
 
+    // helpers for inline validation feedback
+    const onDeliveryChange = (field, value) => {
+        setDeliveryDetails({ ...deliveryDetails, [field]: value });
+
+        // clear the field-specific error as user types
+        if (deliveryErrors[field]) {
+            const n = { ...deliveryErrors };
+            delete n[field];
+            setDeliveryErrors(n);
+        }
+    };
+
     return (
-        <div className="bg-gray-50 min-h-screen pt-32 pb-20">
-            <div className="container mx-auto px-4 max-w-6xl">
+        <div className="min-h-screen pt-32 pb-20 bg-gray-50">
+            <div className="container max-w-6xl px-4 mx-auto">
                 
                 {/* Header */}
-                <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 animate-fade-in-up">
+                <div className="flex flex-col items-center justify-between gap-4 mb-8 md:flex-row animate-fade-in-up">
                     <div className="flex items-center gap-4">
-                        <Link to="/vendors" className="w-10 h-10 bg-white rounded-full shadow-sm flex items-center justify-center text-gray-500 hover:text-orange-500 hover:shadow-md transition-all">
+                        <Link to="/vendors" className="flex items-center justify-center w-10 h-10 text-gray-500 transition-all bg-white rounded-full shadow-sm hover:text-orange-500 hover:shadow-md">
                             <FaArrowLeft />
                         </Link>
                         <div>
@@ -156,57 +218,112 @@ const Checkout = () => {
                     </div>
                 </div>
 
+                <div className="grid grid-cols-2 gap-3 mb-8 md:grid-cols-4">
+                    <div className="flex items-center gap-3 px-4 py-3 bg-white border border-gray-100 shadow-sm rounded-2xl">
+                        <div className="flex items-center justify-center text-orange-600 bg-orange-100 rounded-full w-9 h-9">
+                            <FaShoppingCart />
+                        </div>
+                        <div>
+                            <div className="text-xs text-gray-500">Step 1</div>
+                            <div className="font-semibold text-gray-800">Items</div>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3 px-4 py-3 bg-white border border-gray-100 shadow-sm rounded-2xl">
+                        <div className="flex items-center justify-center text-orange-600 bg-orange-100 rounded-full w-9 h-9">
+                            <FaMapMarkerAlt />
+                        </div>
+                        <div>
+                            <div className="text-xs text-gray-500">Step 2</div>
+                            <div className="font-semibold text-gray-800">Delivery</div>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3 px-4 py-3 bg-white border border-gray-100 shadow-sm rounded-2xl">
+                        <div className="flex items-center justify-center text-orange-600 bg-orange-100 rounded-full w-9 h-9">
+                            <FaCreditCard />
+                        </div>
+                        <div>
+                            <div className="text-xs text-gray-500">Step 3</div>
+                            <div className="font-semibold text-gray-800">Payment</div>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3 px-4 py-3 bg-white border border-gray-100 shadow-sm rounded-2xl">
+                        <div className="flex items-center justify-center text-orange-600 bg-orange-100 rounded-full w-9 h-9">
+                            <FaReceipt />
+                        </div>
+                        <div>
+                            <div className="text-xs text-gray-500">Step 4</div>
+                            <div className="font-semibold text-gray-800">Review</div>
+                        </div>
+                    </div>
+                </div>
+
                 {cartItems.length === 0 ? (
-                    <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-16 text-center animate-fade-in-up">
-                        <div className="w-24 h-24 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <div className="p-16 text-center bg-white border border-gray-100 shadow-sm rounded-3xl animate-fade-in-up">
+                        <div className="flex items-center justify-center w-24 h-24 mx-auto mb-6 rounded-full bg-orange-50">
                             <FaShoppingCart className="text-4xl text-orange-400" />
                         </div>
-                        <h2 className="text-2xl font-bold text-gray-900 mb-2">Your cart is empty</h2>
-                        <p className="text-gray-500 mb-8 max-w-md mx-auto">Looks like you haven't added any delicious items to your cart yet.</p>
+                        <h2 className="mb-2 text-2xl font-bold text-gray-900">Your cart is empty</h2>
+                        <p className="max-w-md mx-auto mb-8 text-gray-500">Looks like you haven't added any delicious items to your cart yet.</p>
                         <Link 
                             to="/vendors" 
-                            className="inline-flex bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-8 rounded-full shadow-lg hover:shadow-orange-500/30 transition-all transform hover:-translate-y-1"
+                            className="inline-flex px-8 py-3 font-bold text-white transition-all transform bg-orange-500 rounded-full shadow-lg hover:bg-orange-600 hover:shadow-orange-500/30 hover:-translate-y-1"
                         >
                             Browse Restaurants
                         </Link>
                     </div>
                 ) : (
-                    <div className="flex flex-col lg:flex-row gap-8">
+                    <div className="flex flex-col gap-8 lg:flex-row">
                         {/* Left Column: Form & Items */}
-                        <div className="w-full lg:w-2/3 flex flex-col gap-8">
+                        <div className="flex flex-col w-full gap-8 lg:w-2/3">
                             
                             {/* Order Items */}
-                            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden animate-fade-in-up">
-                                <div className="bg-gray-900 px-6 py-4 flex items-center gap-3">
+                            <div className="overflow-hidden bg-white border border-gray-100 shadow-sm rounded-3xl animate-fade-in-up">
+                                <div className="flex items-center gap-3 px-6 py-4 bg-gray-900">
                                     <FaShoppingCart className="text-orange-500" />
                                     <h3 className="text-lg font-bold text-white">Your Items</h3>
                                 </div>
                                 <div className="p-6">
+                                    {hasMultipleVendors && (
+                                        <div className="p-4 mb-4 text-sm border rounded-xl bg-amber-50 border-amber-100 text-amber-700">
+                                            You have items from {orderCount} vendors. We will place separate orders for each vendor.
+                                        </div>
+                                    )}
                                     <div className="divide-y divide-gray-100">
-                                        {cartItems.map((item) => (
-                                            <div key={item._id} className="py-4 flex gap-4 items-center group">
-                                                <div className="w-16 h-16 bg-gray-100 rounded-xl overflow-hidden flex-shrink-0">
-                                                    {item.imageUrl ? (
-                                                        <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
-                                                    ) : (
-                                                        <div className="w-full h-full flex items-center justify-center bg-orange-50 text-orange-300">No Img</div>
-                                                    )}
+                                        {groupedItems.map((group) => (
+                                            <div key={group.vendorId} className="py-2">
+                                                <div className="flex items-center justify-between px-3 py-2 mb-3 border border-gray-100 rounded-lg bg-gray-50">
+                                                    <div>
+                                                        <div className="text-sm text-gray-600">From</div>
+                                                        <div className="font-bold text-gray-900">{group.vendorName}</div>
+                                                    </div>
+                                                    <div className="text-sm font-medium text-gray-700">{group.items.length} items</div>
                                                 </div>
-                                                <div className="flex-1">
-                                                    <h4 className="font-bold text-gray-900">{item.name}</h4>
-                                                    <p className="text-gray-500 text-sm">Qty: {item.qty} &times; {item.price} ETB</p>
-                                                    <button
-                                                        type="button"
-                                                        className="text-red-500 text-sm font-semibold hover:text-red-700 mt-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                        onClick={() => removeFromCart(item._id)}
-                                                        disabled={submitting}
-                                                    >
-                                                        Remove
-                                                    </button>
-                                                </div>
-                                                <div className="text-lg font-extrabold text-gray-900">
-                                                    {item.price * item.qty} <span className="text-sm font-normal text-gray-500">ETB</span>
-                                                </div>
+                                                {group.items.map((item) => (
+                                                    <div key={item._id} className="flex items-center gap-4 py-4 group">
+                                                        <div className="flex-shrink-0 w-16 h-16 overflow-hidden bg-gray-100 rounded-xl">
+                                                            {item.imageUrl ? (
+                                                                <img src={item.imageUrl} alt={item.name} className="object-cover w-full h-full" />
+                                                            ) : (
+                                                                <div className="flex items-center justify-center w-full h-full text-orange-300 bg-orange-50">No Img</div>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <h4 className="font-bold text-gray-900">{item.name}</h4>
+                                                            <p className="text-sm text-gray-500">Qty: {item.qty} &times; {item.price} ETB</p>
+                                                            <button
+                                                                type="button"
+                                                                className="mt-1 text-sm font-semibold text-red-500 transition-opacity opacity-0 hover:text-red-700 group-hover:opacity-100"
+                                                                onClick={() => removeFromCart(item._id)}
+                                                                disabled={submitting}
+                                                            >
+                                                                Remove
+                                                            </button>
+                                                        </div>
+                                                        <div className="text-lg font-extrabold text-gray-900">
+                                                            {item.price * item.qty} <span className="text-sm font-normal text-gray-500">ETB</span>
+                                                        </div>
+                                                    </div>
+                                                ))}
                                             </div>
                                         ))}
                                     </div>
@@ -214,61 +331,67 @@ const Checkout = () => {
                             </div>
 
                             {/* Delivery Details */}
-                            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-                                <div className="bg-gray-900 px-6 py-4 flex items-center gap-3">
+                            <div className="overflow-hidden bg-white border border-gray-100 shadow-sm rounded-3xl animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+                                <div className="flex items-center gap-3 px-6 py-4 bg-gray-900">
                                     <FaMapMarkerAlt className="text-orange-500" />
                                     <h3 className="text-lg font-bold text-white">Delivery Details</h3>
                                 </div>
-                                <div className="p-6 md:p-8 space-y-6">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="p-6 space-y-6 md:p-8">
+                                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                                         <div>
-                                            <label className="block text-sm font-bold text-gray-700 mb-2">Landmark <span className="text-orange-500">*</span></label>
+                                            <label className="block mb-2 text-sm font-bold text-gray-700">Landmark <span className="text-orange-500">*</span></label>
                                             <input
-                                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:bg-white transition-colors"
+                                                className={`w-full px-4 py-3 bg-gray-50 border rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:bg-white transition-colors ${deliveryErrors.landmark ? 'border-red-300 bg-red-50' : 'border-gray-200'}`}
                                                 value={deliveryDetails.landmark}
-                                                onChange={(e) => setDeliveryDetails({ ...deliveryDetails, landmark: e.target.value })}
+                                                onChange={(e) => onDeliveryChange('landmark', e.target.value)}
                                                 placeholder="e.g. Next to Arba Minch University Gate"
                                                 disabled={submitting}
                                             />
+                                            {deliveryErrors.landmark && (
+                                                <p className="mt-2 text-sm text-red-600">{deliveryErrors.landmark}</p>
+                                            )}
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-bold text-gray-700 mb-2">Phone Number <span className="text-orange-500">*</span></label>
+                                            <label className="block mb-2 text-sm font-bold text-gray-700">Phone Number <span className="text-orange-500">*</span></label>
                                             <input
-                                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:bg-white transition-colors"
+                                                className={`w-full px-4 py-3 bg-gray-50 border rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:bg-white transition-colors ${deliveryErrors.phone ? 'border-red-300 bg-red-50' : 'border-gray-200'}`}
                                                 type="tel"
                                                 value={deliveryDetails.phone}
-                                                onChange={(e) => setDeliveryDetails({ ...deliveryDetails, phone: e.target.value })}
+                                                onChange={(e) => onDeliveryChange('phone', e.target.value)}
                                                 placeholder="+251 911..."
                                                 disabled={submitting}
                                             />
+                                            {deliveryErrors.phone && (
+                                                <p className="mt-2 text-sm text-red-600">{deliveryErrors.phone}</p>
+                                            )}
                                         </div>
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">Street / Area (Optional)</label>
+                                        <label className="block mb-2 text-sm font-bold text-gray-700">Street / Area (Optional)</label>
                                         <input
-                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:bg-white transition-colors"
+                                            className="w-full px-4 py-3 transition-colors border border-gray-200 bg-gray-50 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:bg-white"
                                             value={deliveryDetails.address}
-                                            onChange={(e) => setDeliveryDetails({ ...deliveryDetails, address: e.target.value })}
+                                            onChange={(e) => onDeliveryChange('address', e.target.value)}
                                             placeholder="e.g., Secha area, near bus station"
                                             disabled={submitting}
                                         />
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">Delivery Instructions (Optional)</label>
+                                        <label className="block mb-2 text-sm font-bold text-gray-700">Delivery Instructions (Optional)</label>
                                         <textarea
-                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:bg-white transition-colors resize-y"
+                                            className="w-full px-4 py-3 transition-colors border border-gray-200 resize-y bg-gray-50 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:bg-white"
                                             rows="3"
                                             value={deliveryDetails.instructions}
-                                            onChange={(e) => setDeliveryDetails({ ...deliveryDetails, instructions: e.target.value })}
+                                            onChange={(e) => onDeliveryChange('instructions', e.target.value)}
                                             placeholder="Any special instructions for the driver?"
                                             disabled={submitting}
                                         />
                                     </div>
                                     
                                     <div className="pt-4 border-t border-gray-100">
-                                        <label className="block text-sm font-bold text-gray-700 mb-4">Payment Method</label>
+                                        <label className="block mb-4 text-sm font-bold text-gray-700">Payment Method</label>
                                         <div className="grid grid-cols-2 gap-4">
                                             <label className={`flex items-center justify-center gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all ${paymentMethod === 'cash' ? 'border-orange-500 bg-orange-50 text-orange-700' : 'border-gray-200 bg-white hover:border-orange-200'}`}>
                                                 <input 
@@ -295,89 +418,123 @@ const Checkout = () => {
                                                 <span className="font-bold">Online (Chapa)</span>
                                             </label>
                                         </div>
+                                        {hasMultipleVendors && paymentMethod === 'chapa' && (
+                                            <p className="mt-3 text-sm text-amber-700">
+                                                Online payment supports one vendor per order. Choose cash or split your order.
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
                             </div>
                         </div>
 
                         {/* Right Column: Order Summary */}
-                        <div className="w-full lg:w-1/3 space-y-6">
-                            <div className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden sticky top-28 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+                        <div className="w-full space-y-6 lg:w-1/3">
+                            <div className="sticky overflow-hidden bg-white border border-gray-100 shadow-xl rounded-3xl top-28 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
                                 <div className="p-6 md:p-8">
-                                    <h3 className="text-xl font-extrabold text-gray-900 mb-6">Order Summary</h3>
+                                    <h3 className="mb-6 text-xl font-extrabold text-gray-900">Order Summary</h3>
                                     
-                                    <div className="space-y-4 mb-6">
-                                        <div className="flex justify-between items-center text-gray-600">
-                                            <span>Subtotal</span>
-                                            <span className="font-medium text-gray-900">{totalPrice} ETB</span>
-                                        </div>
-                                        <div className="flex justify-between items-center text-gray-600">
-                                            <span>Delivery Fee</span>
-                                            <span className="font-medium text-gray-900">{DELIVERY_FEE_ETB} ETB</span>
+                                    <div className="mb-6 space-y-4">
+                                        {groupedItems.map((g) => {
+                                            const subtotal = g.items.reduce((s, it) => s + it.price * it.qty, 0);
+                                            return (
+                                                <div key={g.vendorId} className="flex items-center justify-between text-gray-600">
+                                                    <span className="text-sm">{g.vendorName} subtotal</span>
+                                                    <span className="font-medium text-gray-900">{subtotal} ETB</span>
+                                                </div>
+                                            );
+                                        })}
+                                        <div className="flex items-center justify-between text-gray-600">
+                                            <span>Delivery Fee {orderCount > 1 ? `(x${orderCount})` : ''}</span>
+                                            <span className="font-medium text-gray-900">{orderCount ? DELIVERY_FEE_ETB * orderCount : 0} ETB</span>
                                         </div>
                                     </div>
                                     
-                                    <div className="border-t border-gray-100 pt-4 mb-4">
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">Have a coupon?</label>
+                                    <div className="pt-4 mb-4 border-t border-gray-100">
+                                        <label className="block mb-2 text-sm font-bold text-gray-700">Have a coupon?</label>
                                         <div className="flex gap-2">
                                             <input
                                                 type="text"
-                                                className="flex-1 px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 uppercase font-bold"
+                                                className="flex-1 px-4 py-2 font-bold uppercase border border-gray-200 bg-gray-50 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500"
                                                 placeholder="Enter Code"
                                                 value={couponCode}
                                                 onChange={(e) => setCouponCode(e.target.value)}
-                                                disabled={validatingCoupon || !!coupon}
+                                                disabled={validatingCoupon || !!coupon || hasMultipleVendors}
                                             />
                                             <button
                                                 type="button"
                                                 onClick={coupon ? () => { setCoupon(null); setCouponCode(''); } : handleApplyCoupon}
                                                 className={`px-4 py-2 rounded-xl font-bold transition-all ${coupon ? 'bg-red-50 text-red-500 hover:bg-red-100' : 'bg-gray-900 text-white hover:bg-black'}`}
-                                                disabled={validatingCoupon}
+                                                disabled={validatingCoupon || hasMultipleVendors}
                                             >
                                                 {validatingCoupon ? '...' : (coupon ? 'Remove' : 'Apply')}
                                             </button>
                                         </div>
+                                        {hasMultipleVendors && (
+                                            <p className="mt-2 text-xs text-gray-500">Coupons apply to a single vendor order.</p>
+                                        )}
                                     </div>
 
                                     {coupon && (
-                                        <div className="flex justify-between items-center text-green-600 font-bold text-sm mb-6 bg-green-50 p-3 rounded-xl border border-green-100">
+                                        <div className="flex items-center justify-between p-3 mb-6 text-sm font-bold text-green-600 border border-green-100 bg-green-50 rounded-xl">
                                             <span>Discount Applied ({coupon.code})</span>
                                             <span>-{coupon.discount} ETB</span>
                                         </div>
                                     )}
 
-                                    <div className="border-t border-gray-100 pt-4 mb-8">
-                                        <div className="flex justify-between items-center">
+                                    <div className="pt-4 mb-8 border-t border-gray-100">
+                                        <div className="flex items-center justify-between">
                                             <span className="text-lg font-bold text-gray-900">Total</span>
                                             <span className="text-2xl font-extrabold text-orange-500">{totalWithDelivery} ETB</span>
                                         </div>
                                     </div>
 
+                                    <div className="pt-4 mb-6 text-sm text-gray-600 border-t border-gray-100">
+                                        <div className="flex justify-between">
+                                            <span>Deliver to</span>
+                                            <span className="font-semibold text-gray-800 text-right max-w-[180px]">{deliveryDetails.landmark || 'Add a landmark'}</span>
+                                        </div>
+                                        <div className="flex justify-between mt-2">
+                                            <span>Phone</span>
+                                            <span className="font-semibold text-gray-800">{deliveryDetails.phone || 'Add phone number'}</span>
+                                        </div>
+                                        <div className="flex justify-between mt-2">
+                                            <span>Payment</span>
+                                            <span className="font-semibold text-gray-800 capitalize">{paymentMethod}</span>
+                                        </div>
+                                    </div>
+
+                                    {flowError && (
+                                        <div className="p-3 mb-4 text-sm text-red-600 border border-red-100 rounded-xl bg-red-50">
+                                            {flowError}
+                                        </div>
+                                    )}
+
                                     <button
                                         type="button"
-                                        className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:shadow-orange-500/30 transition-all transform hover:-translate-y-1 flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                                        className="flex items-center justify-center w-full gap-2 px-6 py-4 font-bold text-white transition-all transform bg-orange-500 shadow-lg hover:bg-orange-600 rounded-xl hover:shadow-orange-500/30 hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                                         onClick={handlePlaceOrder}
                                         disabled={!canCheckout}
                                     >
                                         {submitting ? (
                                             <span className="flex items-center gap-2">
-                                                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Processing...
+                                                <div className="w-5 h-5 border-2 border-white rounded-full border-t-transparent animate-spin"></div> Processing...
                                             </span>
                                         ) : (
-                                            <span>Place Order Now</span>
+                                            <span>{orderCount > 1 ? `Place ${orderCount} Orders` : 'Place Order Now'}</span>
                                         )}
                                     </button>
 
                                     {user?.name && (
-                                        <p className="text-center text-sm text-gray-500 mt-4">
+                                        <p className="mt-4 text-sm text-center text-gray-500">
                                             Ordering as <span className="font-bold text-gray-700">{user.name}</span>
                                         </p>
                                     )}
                                 </div>
                                 
-                                <div className="bg-orange-50 p-6 border-t border-orange-100 flex gap-4 items-start">
-                                    <FaMotorcycle className="text-orange-500 text-2xl flex-shrink-0 mt-1" />
-                                    <p className="text-sm text-orange-800 leading-relaxed">
+                                <div className="flex items-start gap-4 p-6 border-t border-orange-100 bg-orange-50">
+                                    <FaMotorcycle className="flex-shrink-0 mt-1 text-2xl text-orange-500" />
+                                    <p className="text-sm leading-relaxed text-orange-800">
                                         For faster deliveries in Arba Minch, please provide a clear, easily recognizable landmark (e.g. hotel, campus gate, church).
                                     </p>
                                 </div>
