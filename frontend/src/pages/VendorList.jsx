@@ -21,6 +21,9 @@ const VendorList = () => {
         // Set initial category from URL params
         const type = searchParams.get('type');
         if (type) setSelectedCategory(type);
+        // Pre-fill search from URL params (e.g., from home page search bar)
+        const search = searchParams.get('search');
+        if (search) setSearchTerm(search);
     }, [searchParams]);
 
     const fetchVendors = async () => {

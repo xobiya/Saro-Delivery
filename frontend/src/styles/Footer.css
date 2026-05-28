@@ -32,8 +32,7 @@
 
 .footer-brand .footer-logo {
     display: flex;
-    align-items: baseline;
-    gap: 4px;
+    align-items: center;
     text-decoration: none;
     margin-bottom: var(--space-6);
 }

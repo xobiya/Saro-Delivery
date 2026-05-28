@@ -4,6 +4,7 @@ import AuthContext from '../context/AuthContext';
 import CartContext from '../context/CartContext';
 import { useLocale } from '../context/LocaleContext.jsx';
 import { FaBell, FaShoppingCart, FaUser, FaSignOutAlt, FaBars, FaTimes } from 'react-icons/fa';
+import saroLogo from '../Assets/sarodelivery-removebg-preview.png';
 import '../styles/Navbar.css';
 
 const Navbar = () => {
@@ -37,9 +38,8 @@ const Navbar = () => {
         <nav className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 bg-gray-900 text-white ${scrolled ? 'shadow-lg py-3' : 'py-5'} navbar`}>
             <div className="container navbar-container">
                 {/* Logo */}
-                <Link to="/" className="nav-logo text-white" onClick={() => setMobileMenuOpen(false)}>
-                    <span className="logo-text text-white">SARO</span>
-                    <span className="logo-subtext text-gray-300" style={{ fontSize: '0.8em', opacity: 0.8 }}>DELIVERY</span>
+                <Link to="/" className="nav-logo flex items-center" onClick={() => setMobileMenuOpen(false)}>
+                    <img src={saroLogo} alt="Saro Delivery" className="h-10 sm:h-12 w-auto object-contain" />
                 </Link>
 
                 {/* Desktop Navigation */}
@@ -57,7 +57,7 @@ const Navbar = () => {
                 <div className="nav-actions">
                     <div className="language-toggle hide-mobile">
                         <button 
-                            className={`btn-ghost ${locale === 'en' ? 'active' : ''}`} 
+                             className={`btn-ghost ${locale === 'en' ? 'active' : ''}`} 
                             onClick={() => setLanguage('en')}
                             style={{ color: '#fff', opacity: locale === 'en' ? 1 : 0.6 }}
                         >EN</button>
@@ -105,7 +105,9 @@ const Navbar = () => {
             <div className={`mobile-menu-overlay ${mobileMenuOpen ? 'open' : ''}`} onClick={() => setMobileMenuOpen(false)}>
                 <div className="mobile-menu-drawer" onClick={e => e.stopPropagation()}>
                     <div className="flex justify-between items-center mb-10">
-                        <span className="logo-text text-primary" style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>SARO</span>
+                        <div className="flex items-center">
+                            <img src={saroLogo} alt="Saro Delivery" className="h-8 w-auto object-contain" />
+                        </div>
                         <button className="btn-ghost" onClick={() => setMobileMenuOpen(false)}><FaTimes style={{ fontSize: '1.5rem' }} /></button>
                     </div>
                     <Link to="/" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>{t('nav.home')}</Link>

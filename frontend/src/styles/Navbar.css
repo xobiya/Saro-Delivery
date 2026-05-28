@@ -30,13 +30,9 @@
 }
 
 .nav-logo {
-    font-size: var(--font-size-2xl);
-    font-weight: var(--font-weight-extrabold);
     text-decoration: none;
-    color: var(--text-inverse);
     display: flex;
-    align-items: baseline;
-    gap: 2px;
+    align-items: center;
 }
 
 .navbar.scrolled .nav-logo {

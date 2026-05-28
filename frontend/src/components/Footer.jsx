@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import saroLogo from '../Assets/sarodelivery-removebg-preview.png';
 import '../styles/Footer.css';
 
 const Footer = () => {
@@ -10,9 +11,8 @@ const Footer = () => {
             <div className="container">
                 <div className="footer-grid">
                     <div className="footer-brand">
-                        <Link to="/" className="footer-logo">
-                            <span className="logo-text">SARO</span>
-                            <span className="logo-subtext">Delivery</span>
+                        <Link to="/" className="footer-logo flex items-center mb-4">
+                            <img src={saroLogo} alt="Saro Delivery Logo" className="h-12 w-auto object-contain" />
                         </Link>
                         <p className="footer-description">
                             Experience the best food delivery service in Ethiopia. 

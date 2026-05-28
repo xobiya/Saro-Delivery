@@ -61,7 +61,8 @@ const initializePayment = asyncHandler(async (req, res) => {
         last_name: userName.split(' ')[1] || 'User',
         tx_ref: TEXT_REF,
         callback_url: `${process.env.BACKEND_URL || 'http://localhost:5000'}/api/payment/verify/${TEXT_REF}`,
-        return_url: `${frontendUrl}/dashboard`,
+        // return_url includes order & tx_ref so the frontend can verify status independently
+        return_url: `${frontendUrl}/payment/return?order=${order._id}&tx_ref=${TEXT_REF}`,
         customization: {
             title: 'Saro Delivery',
             description: `Payment for order ${order._id}`
@@ -115,7 +116,7 @@ const verifyPayment = asyncHandler(async (req, res) => {
     // Prevent duplicate processing
     if (processedPayments.has(id)) {
         logger.warn('Duplicate payment verification attempt', { txRef: id });
-        return res.redirect(`${getFrontendUrl()}/dashboard?payment=already_processed`);
+        return res.redirect(`${getFrontendUrl()}/payment/return?payment=already_processed`);
     }
 
     const CHAPA_URL = `https://api.chapa.co/v1/transaction/verify/${id}`;
@@ -145,7 +146,7 @@ const verifyPayment = asyncHandler(async (req, res) => {
 
             if (!order) {
                 logger.error('Order not found for payment verification', { orderId, txRef: tx_ref });
-                return res.redirect(`${getFrontendUrl()}/dashboard?payment=order_not_found`);
+                return res.redirect(`${getFrontendUrl()}/payment/return?payment=order_not_found`);
             }
 
             // CRITICAL: Verify amount matches
@@ -156,14 +157,14 @@ const verifyPayment = asyncHandler(async (req, res) => {
                     paidAmount,
                     txRef: tx_ref
                 });
-                return res.redirect(`${getFrontendUrl()}/dashboard?payment=amount_mismatch`);
+                return res.redirect(`${getFrontendUrl()}/payment/return?payment=amount_mismatch`);
             }
 
             // Check if already processed
             if (order.paymentStatus === 'completed') {
                 logger.warn('Order already marked as paid', { orderId, txRef: tx_ref });
                 processedPayments.add(id);
-                return res.redirect(`${getFrontendUrl()}/dashboard?payment=already_paid&order=${orderId}`);
+                return res.redirect(`${getFrontendUrl()}/payment/return?payment=already_paid&order=${orderId}`);
             }
 
             // Update order
@@ -184,7 +185,7 @@ const verifyPayment = asyncHandler(async (req, res) => {
                 txRef: tx_ref
             });
 
-            return res.redirect(`${getFrontendUrl()}/dashboard?payment=success&order=${orderId}`);
+            return res.redirect(`${getFrontendUrl()}/payment/return?payment=success&order=${orderId}`);
         }
 
         logger.warn('Payment verification failed - not successful', {
@@ -193,15 +194,126 @@ const verifyPayment = asyncHandler(async (req, res) => {
             dataStatus: response.data.data?.status
         });
 
-        res.redirect(`${getFrontendUrl()}/dashboard?payment=failed`);
+        res.redirect(`${getFrontendUrl()}/payment/return?payment=failed`);
 
     } catch (error) {
         logger.error('Chapa payment verification error', {
             txRef: id,
             error: error.response ? error.response.data : error.message
         });
-        res.redirect(`${getFrontendUrl()}/dashboard?payment=error`);
+        res.redirect(`${getFrontendUrl()}/payment/return?payment=error`);
     }
 });
 
-module.exports = { initializePayment, verifyPayment };
+// @desc    Verify payment from frontend (JSON response, not redirect)
+// @route   POST /api/payment/verify-frontend
+// @access  Private
+const verifyPaymentFromFrontend = asyncHandler(async (req, res) => {
+    const { txRef, orderId } = req.body;
+
+    if (!txRef || !orderId) {
+        res.status(400);
+        throw new Error('txRef and orderId are required');
+    }
+
+    const CHAPA_KEY = process.env.CHAPA_SECRET_KEY || '';
+    if (!CHAPA_KEY || CHAPA_KEY.includes('your-chapa-test-key')) {
+        res.status(500);
+        throw new Error('Payment gateway not configured');
+    }
+
+    // If already processed, just return the current order state
+    if (processedPayments.has(txRef)) {
+        const order = await Order.findById(orderId);
+        return res.json({ status: order?.paymentStatus === 'completed' ? 'success' : 'already_processed', orderId });
+    }
+
+    try {
+        const response = await axios.get(`https://api.chapa.co/v1/transaction/verify/${txRef}`, {
+            headers: { Authorization: `Bearer ${CHAPA_KEY}` },
+            timeout: 12000,
+        });
+
+        const chapaStatus = response.data?.data?.status;
+        const paidAmount  = parseFloat(response.data?.data?.amount || 0);
+
+        logger.info('Frontend verify — Chapa response', { txRef, chapaStatus, paidAmount });
+
+        if (response.data.status === 'success' && chapaStatus === 'success') {
+            const order = await Order.findById(orderId);
+
+            if (!order) {
+                return res.status(404).json({ status: 'order_not_found' });
+            }
+
+            // Verify user owns this order
+            if (order.user.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+                return res.status(403).json({ status: 'unauthorized' });
+            }
+
+            // Already paid — idempotent
+            if (order.paymentStatus === 'completed') {
+                processedPayments.add(txRef);
+                return res.json({ status: 'already_paid', orderId });
+            }
+
+            // Verify amount matches (allow ±1 ETB rounding tolerance)
+            if (Math.abs(paidAmount - order.totalAmount) > 1) {
+                logger.error('Amount mismatch in frontend verify', { orderId, paidAmount, expected: order.totalAmount });
+                return res.json({ status: 'amount_mismatch', orderId });
+            }
+
+            // Mark paid
+            order.paymentStatus = 'completed';
+            order.status = 'confirmed';
+            await order.save();
+
+            processedPayments.add(txRef);
+
+            const io = req.app.get('io');
+            io.emit('orders_updated', { type: 'payment_success', orderId });
+
+            logger.info('Frontend verify — payment confirmed', { txRef, orderId, amount: paidAmount });
+
+            return res.json({ status: 'success', orderId });
+        }
+
+        // Chapa says not successful
+        return res.json({ status: 'failed', orderId, chapaStatus });
+
+    } catch (error) {
+        const errData = error.response?.data || error.message;
+        logger.error('Frontend verify — Chapa API error', { txRef, error: errData });
+        res.status(502).json({ status: 'error', message: 'Could not reach payment gateway' });
+    }
+});
+
+// @desc    Get payment status for an order (called by frontend after Chapa redirect)
+// @route   GET /api/payment/status/:orderId
+// @access  Private
+const getPaymentStatus = asyncHandler(async (req, res) => {
+    const { orderId } = req.params;
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+        res.status(404);
+        throw new Error('Order not found');
+    }
+
+    // Allow the owner or admin to check
+    if (order.user.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+        res.status(403);
+        throw new Error('Not authorized');
+    }
+
+    res.json({
+        orderId: order._id,
+        paymentStatus: order.paymentStatus,   // 'pending' | 'completed' | 'failed'
+        orderStatus:   order.status,           // 'pending' | 'confirmed' | ...
+        totalAmount:   order.totalAmount,
+        paymentMethod: order.paymentMethod,
+        dropoffLocation: order.dropoffLocation,
+    });
+});
+
+module.exports = { initializePayment, verifyPayment, getPaymentStatus, verifyPaymentFromFrontend };

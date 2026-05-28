@@ -20,6 +20,7 @@ import VendorList from './pages/VendorList';
 import Checkout from './pages/Checkout';
 import OAuthCallback from './pages/OAuthCallback';
 import Profile from './pages/Profile';
+import PaymentReturn from './pages/PaymentReturn';
 import ScrollToTop from './components/ScrollToTop';
 
 function App() {
@@ -96,6 +97,7 @@ function App() {
                                         />
 
                                         <Route path="/menu/:id" element={<VendorMenu />} />
+                                        <Route path="/payment/return" element={<PaymentReturn />} />
                                     </Routes>
                                 </MainLayout>
                             </Router>
